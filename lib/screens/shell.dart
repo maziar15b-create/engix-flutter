@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import 'projects_tab.dart';
 
 class Shell extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -123,7 +124,10 @@ class _ShellState extends State<Shell> {
                   index: _index,
                   children: [
                     _HomeTab(profile: widget.profile, roleLabel: _roleLabel),
-                    for (final t in _tabs.skip(1)) _ComingSoon(title: t.label),
+                    const _ComingSoon(title: 'پیام‌رسان'),
+                    ProjectsTab(profile: widget.profile),
+                    const _ComingSoon(title: 'شبکه'),
+                    const _ComingSoon(title: 'ابزارها'),
                   ],
                 ),
               ),
