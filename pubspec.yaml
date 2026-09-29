@@ -1,0 +1,19 @@
+name: engix
+description: EngiX - شبکه مهندسان عمران (اپ نیتیو فلاتر)
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  supabase_flutter: ^2.8.0
+  http: ^1.2.2
+  google_fonts: ^6.2.1
+
+flutter:
+  uses-material-design: true
