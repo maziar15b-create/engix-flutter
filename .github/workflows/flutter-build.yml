@@ -3,6 +3,9 @@ name: Build Flutter Android
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,7 +22,11 @@ jobs:
         run: bash setup.sh
       - name: Build APK
         run: flutter build apk --release
-      - uses: actions/upload-artifact@v4
+      - name: Rename APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk engix.apk
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
         with:
-          name: engix-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          tag_name: build-${{ github.run_number }}
+          name: EngiX build ${{ github.run_number }}
+          files: engix.apk
