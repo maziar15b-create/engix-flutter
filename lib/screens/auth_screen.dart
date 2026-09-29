@@ -42,9 +42,9 @@ class _AuthScreenState extends State<AuthScreen> {
       if (mounted) setState(() => _error = e.message);
     } on AuthException catch (e) {
       if (mounted) setState(() => _error = e.message);
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        setState(() => _error = 'خطا در ارتباط با سرور. اینترنت را بررسی کنید.');
+        setState(() => _error = 'خطا: $e');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -56,7 +56,6 @@ class _AuthScreenState extends State<AuthScreen> {
     final refresh = session?['refresh_token'] as String?;
     if (refresh == null) throw ApiException('ورود ناموفق بود.');
     await Supabase.instance.client.auth.setSession(refresh);
-    // از اینجا به بعد Root به‌طور خودکار صفحه را عوض می‌کند
   }
 
   Future<void> _sendCode() => _run(() async {
@@ -109,7 +108,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 6),
                     const Text(
-                      'شبکه‌ای برای مهندسان عمران — پروژه‌ها، پیام‌رسان و آموزش در یک‌جا.',
+                      'شبکه‌ای برای مهندسان عمران — پروژهها، پیام‌رسان و آموزش در یک‌جا.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: C.soft, fontSize: 13.5, height: 1.8),
                     ),
@@ -239,7 +238,7 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
       const SizedBox(height: 8),
       const Text(
-        'اگه این ایمیل قبلاً ثبت‌نام نکرده باشه، خودکار یه حساب جدید براش ساخته میشه.',
+        'اگه این ایمیل قبلاً ثبتنام نکرده باشه، خودکار یه حساب جدید براش ساخته میشه.',
         style: TextStyle(color: C.muted, fontSize: 11.5, height: 1.7),
       ),
       const SizedBox(height: 10),
