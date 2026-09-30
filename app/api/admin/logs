@@ -1,0 +1,53 @@
+import { NextResponse } from "next/server";
+import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
+
+async function checkAdmin(req) {
+  const authHeader = req.headers.get("authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "");
+  if (!token) return { error: "احراز هویت لازم است.", status: 401 };
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+  if (userError || !userData?.user) return { error: "نشست نامعتبر است.", status: 401 };
+
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", userData.user.id)
+    .single();
+
+  if (profileError || !profile?.is_admin) return { error: "دسترسی غیرمجاز.", status: 403 };
+
+  return { supabaseAdmin };
+}
+
+export async function GET(req) {
+  const check = await checkAdmin(req);
+  if (check.error) return NextResponse.json({ error: check.error }, { status: check.status });
+
+  const { searchParams } = new URL(req.url);
+  const level = searchParams.get("level");
+
+  let query = check.supabaseAdmin
+    .from("app_logs")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (level && level !== "all") query = query.eq("level", level);
+
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ logs: data });
+}
+
+export async function DELETE(req) {
+  const check = await checkAdmin(req);
+  if (check.error) return NextResponse.json({ error: check.error }, { status: check.status });
+
+  const { error } = await check.supabaseAdmin.from("app_logs").delete().neq("id", 0);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}
