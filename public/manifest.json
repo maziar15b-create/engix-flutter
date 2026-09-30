@@ -1,0 +1,33 @@
+{
+  "name": "EngiX",
+  "short_name": "EngiX",
+  "description": "اپلیکیشن مهندسی EngiX — پروژه‌ها، پیام‌رسان، شبکه اجتماعی و ابزارهای محاسباتی",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0A1F3D",
+  "theme_color": "#0A1F3D",
+  "orientation": "portrait",
+  "lang": "fa",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/icons/IMG_5706.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/IMG_5707.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/IMG_5708.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
