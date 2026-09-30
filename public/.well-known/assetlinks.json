@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.engix.app",
+    "sha256_cert_fingerprints": ["1C:6C:C5:DE:E1:50:AA:B4:2E:4F:9B:18:C9:94:00:E6:E8:2D:DE:16:79:A8:A7:CC:34:C1:85:4D:E6:67:EE:DC"]
+  }
+}]
