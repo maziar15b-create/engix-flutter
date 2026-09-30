@@ -24,6 +24,11 @@ jobs:
         run: flutter build apk --release
       - name: Rename APK
         run: cp build/app/outputs/flutter-apk/app-release.apk engix.apk
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: engix-apk
+          path: engix.apk
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
