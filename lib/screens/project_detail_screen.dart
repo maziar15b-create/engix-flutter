@@ -4,6 +4,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import 'project_tabs/announcements_tab.dart';
+import 'project_tabs/attendance_tab.dart';
+import 'project_tabs/correspondence_tab.dart';
+import 'project_tabs/design_tab.dart';
+import 'project_tabs/execution_tab.dart';
+import 'project_tabs/gantt_tab.dart';
+import 'project_tabs/inventory_tab.dart';
+import 'project_tabs/qc_tab.dart';
+import 'project_tabs/supervision_tab.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -19,8 +28,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
   static const _tabs = <List<String>>[
     ['overview', 'نمای کلی'],
-    ['members', 'اعضا'],
     ['reports', 'گزارش کار'],
+    ['design', 'محاسبات'],
+    ['execution', 'اجرا'],
+    ['supervision', 'نظارت'],
     ['gantt', 'برنامه‌زمانبندی'],
     ['statement', 'صورت‌وضعیت'],
     ['workorder', 'دستورکار'],
@@ -31,7 +42,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     ['photos', 'گالری تصاویر'],
     ['correspondence', 'مکاتبات'],
     ['dailyreport', 'گزارش روزانه'],
-    ['export', 'خروجی'],
+    ['announcements', 'اطلاعیه‌ها'],
+    ['export', 'خروجی و اشتراک‌گذاری'],
+    ['members', 'اعضا'],
   ];
 
   Map<String, dynamic>? _project;
@@ -296,6 +309,27 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         return _overview(p);
       case 'members':
         return _membersList();
+      case 'design':
+        return DesignTab(projectId: widget.projectId, profile: widget.profile);
+      case 'execution':
+        return ExecutionTab(projectId: widget.projectId);
+      case 'supervision':
+        return SupervisionTab(projectId: widget.projectId, profile: widget.profile);
+      case 'announcements':
+        return AnnouncementsTab(
+            projectId: widget.projectId,
+            profile: widget.profile,
+            members: _members ?? const []);
+      case 'gantt':
+        return GanttTab(projectId: widget.projectId, profile: widget.profile);
+      case 'qc':
+        return QcTab(projectId: widget.projectId, profile: widget.profile);
+      case 'inventory':
+        return InventoryTab(projectId: widget.projectId, profile: widget.profile);
+      case 'attendance':
+        return AttendanceTab(projectId: widget.projectId, profile: widget.profile);
+      case 'correspondence':
+        return CorrespondenceTab(projectId: widget.projectId, profile: widget.profile);
       default:
         final label = _tabs.firstWhere((t) => t[0] == _tab)[1];
         return Center(
