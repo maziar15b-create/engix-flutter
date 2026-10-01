@@ -3,8 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/theme.dart';
 import '../core/widgets.dart';
-import 'projects_tab.dart';
 import 'messenger_tab.dart';
+import 'social_tab.dart';
+import 'tools_tab.dart';
+import 'projects_tab.dart';
 
 class Shell extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -125,10 +127,10 @@ class _ShellState extends State<Shell> {
                   index: _index,
                   children: [
                     _HomeTab(profile: widget.profile, roleLabel: _roleLabel),
-MessengerTab(profile: widget.profile),
+                    MessengerTab(profile: widget.profile),
                     ProjectsTab(profile: widget.profile),
-                    const _ComingSoon(title: 'شبکه'),
-                    const _ComingSoon(title: 'ابزارها'),
+                    SocialTab(profile: widget.profile),
+                    const ToolsTab(),
                   ],
                 ),
               ),
@@ -214,3 +216,4 @@ class _ComingSoon extends StatelessWidget {
     );
   }
 }
+
