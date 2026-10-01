@@ -54,18 +54,26 @@ class _MessengerTabState extends State<MessengerTab> {
       if (directIds.isNotEmpty) {
         final od = await _db
             .from('conversation_members')
-            .select('conversation_id, profiles(name, avatar_url)')
+            .select('conversation_id, user_id')
             .inFilter('conversation_id', directIds)
             .neq('user_id', _uid);
-        for (final o in od) {
-          final p = o['profiles'];
-          if (p is Map) {
-            others[o['conversation_id'].toString()] =
-                Map<String, dynamic>.from(p);
+        final userIds = od.map((o) => o['user_id']).toSet().toList();
+        final profs = <String, Map<String, dynamic>>{};
+        if (userIds.isNotEmpty) {
+          final ps = await _db
+              .from('profiles')
+              .select('id, name, avatar_url')
+              .inFilter('id', userIds);
+          for (final p in ps) {
+            profs[p['id'].toString()] = Map<String, dynamic>.from(p);
           }
         }
+        for (final o in od) {
+          final p = profs[o['user_id'].toString()];
+          if (p != null) others[o['conversation_id'].toString()] = p;
+        }
       }
-
+      
       await Future.wait(chats.map((c) async {
         try {
           final last = await _db
