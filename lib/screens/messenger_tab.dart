@@ -73,7 +73,7 @@ class _MessengerTabState extends State<MessengerTab> {
           if (p != null) others[o['conversation_id'].toString()] = p;
         }
       }
-      
+
       await Future.wait(chats.map((c) async {
         try {
           final last = await _db
@@ -450,3 +450,4 @@ class _MessengerTabState extends State<MessengerTab> {
     );
   }
 }
+
