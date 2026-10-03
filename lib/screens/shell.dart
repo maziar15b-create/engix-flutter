@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import 'home_tab.dart';
 import 'messenger_tab.dart';
 import 'social_tab.dart';
 import 'tools_tab.dart';
@@ -126,7 +127,7 @@ class _ShellState extends State<Shell> {
                 child: IndexedStack(
                   index: _index,
                   children: [
-                    _HomeTab(profile: widget.profile, roleLabel: _roleLabel),
+                    HomeTab(profile: widget.profile, roleLabel: _roleLabel),
                     MessengerTab(profile: widget.profile),
                     ProjectsTab(profile: widget.profile),
                     SocialTab(profile: widget.profile),
@@ -160,60 +161,3 @@ class _TabInfo {
   final IconData selectedIcon;
   const _TabInfo(this.label, this.icon, this.selectedIcon);
 }
-
-class _HomeTab extends StatelessWidget {
-  final Map<String, dynamic> profile;
-  final String roleLabel;
-  const _HomeTab({required this.profile, required this.roleLabel});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        EngixPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('سلام ${(profile['name'] ?? '').toString()} 👋',
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-              if (roleLabel.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text('نقش فعال: $roleLabel',
-                    style: const TextStyle(color: C.soft, fontSize: 13)),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        const EngixPanel(
-          child: Text(
-            'ورود و پروفایل با موفقیت به اپ نیتیو وصل شد. بخش‌های پروژه‌ها، پیام‌رسان، شبکه و ابزارها در مراحل بعد اضافه می‌شوند.',
-            style: TextStyle(color: C.soft, height: 1.9, fontSize: 13),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ComingSoon extends StatelessWidget {
-  final String title;
-  const _ComingSoon({required this.title});
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.construction, size: 40, color: C.muted),
-          const SizedBox(height: 10),
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          const Text('به‌زودی', style: TextStyle(color: C.muted)),
-        ],
-      ),
-    );
-  }
-}
-
