@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -20,11 +22,62 @@ class _MessengerTabState extends State<MessengerTab> {
   List<Map<String, dynamic>>? _chats;
   String? _error;
   String _query = '';
+  RealtimeChannel? _channel;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _subscribe();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    final ch = _channel;
+    if (ch != null) _db.removeChannel(ch);
+    super.dispose();
+  }
+
+  // هر تغییری در پیام‌ها/گفتگوهای کاربر → بارگذاری مجدد لیست (با تأخیر کوتاه)
+  void _scheduleReload() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) _load();
+    });
+  }
+
+  void _subscribe() {
+    _channel = _db
+        .channel('inbox:$_uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          callback: (_) => _scheduleReload(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'messages',
+          callback: (_) => _scheduleReload(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'conversation_members',
+          filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq, column: 'user_id', value: _uid),
+          callback: (_) => _scheduleReload(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'conversations',
+          callback: (_) => _scheduleReload(),
+        )
+        .subscribe();
   }
 
   Future<void> _load() async {
@@ -450,4 +503,3 @@ class _MessengerTabState extends State<MessengerTab> {
     );
   }
 }
-
