@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
 
 import '../../core/config.dart';
 import '../../core/theme.dart';
@@ -26,7 +27,7 @@ const _sectionDefs = <List<String>>[
   ['inventory', 'انبار'],
   ['attendance', 'حضور و غیاب'],
   ['photos', 'گالری تصاویر'],
-  ['announcements', 'اطلاعیه‌ها'],
+  ['announcements', 'اطلاعیهها'],
 ];
 
 const _dirLabels = {'incoming': 'وارده', 'outgoing': 'صادره'};
@@ -155,7 +156,7 @@ class _ExportTabState extends State<ExportTab> {
         [for (final r in att) [_d(r['attendance_date']), _v(r['worker_name']), _v(r['trade']), _attLabels[r['status']] ?? _v(r['status'])]]);
     push('photos', 'گالری تصاویر', ['تاریخ', 'توضیح', 'لینک تصویر'],
         [for (final r in photos) [_d(r['taken_date']), _v(r['caption']), _v(r['photo_url'])]]);
-    push('announcements', 'اطلاعیه‌ها', ['تاریخ', 'ثبت‌کننده', 'متن'],
+    push('announcements', 'اطلاعیه‌ها', ['تاریخ', 'ثبتکننده', 'متن'],
         [for (final r in ann) [_d(r['created_at']), nm(r['by']), _v(r['text'])]]);
     return out;
   }
@@ -255,7 +256,7 @@ class _ExportTabState extends State<ExportTab> {
         final f = await _tmp('$_base.html', utf8.encode(_html(sections)));
         await Share.shareXFiles([XFile(f.path, mimeType: 'text/html')], text: 'گزارش پروژه');
         if (mounted) {
-          setState(() => _notice = 'گزارش آماده شد. آن را در مرورگر باز کنید و «چاپ ← ذخیره به‌صورت PDF» بزنید.');
+          setState(() => _notice = 'گزارش آماده شد. آن را در مرورگر باز کنید و «چاپ ← ذخیره بهصورت PDF» بزنید.');
         }
       });
 
@@ -336,7 +337,7 @@ class _ExportTabState extends State<ExportTab> {
       padding: const EdgeInsets.all(16),
       children: [
         const TabHeader('خروجی و اشتراک‌گذاری',
-            subtitle: 'بخش‌های مورد نظر را انتخاب کنید و گزارش یکپارچه پروژه را به‌صورت اکسل یا گزارش قابل‌چاپ بگیرید.'),
+            subtitle: 'بخش‌های مورد نظر را انتخاب کنید و گزارش یکپارچه پروژه را بهصورت اکسل یا گزارش قابل‌چاپ بگیرید.'),
         Row(children: [
           TextButton(
               onPressed: () => setState(() {
@@ -391,7 +392,7 @@ class _ExportTabState extends State<ExportTab> {
         const SizedBox(height: 8),
         OutlinedButton(
             onPressed: busy ? null : () => setState(() => _showShare = !_showShare),
-            child: const Text('💬 ارسال به اعضا در پیام‌رسان')),
+            child: const Text('💬 ارسال به اعضا در پیامرسان')),
         if (_showShare) ...[
           const SizedBox(height: 10),
           TabCard(
