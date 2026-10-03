@@ -14,9 +14,11 @@ import 'project_tabs/execution_tab.dart';
 import 'project_tabs/export_tab.dart';
 import 'project_tabs/gantt_tab.dart';
 import 'project_tabs/inventory_tab.dart';
+import 'project_tabs/phases_panel.dart';
 import 'project_tabs/photos_tab.dart';
 import 'project_tabs/qc_tab.dart';
 import 'project_tabs/reports_tab.dart';
+import 'project_tabs/statement_tab.dart';
 import 'project_tabs/supervision_tab.dart';
 import 'project_tabs/workorder_tab.dart';
 
@@ -335,6 +337,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             profile: widget.profile,
             project: p,
             members: _members ?? const []);
+      case 'statement':
+        return StatementTab(projectId: widget.projectId, profile: widget.profile);
       case 'design':
         return DesignTab(projectId: widget.projectId, profile: widget.profile);
       case 'execution':
@@ -430,6 +434,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        PhasesPanel(projectId: widget.projectId, isOwner: _isOwner),
         const SizedBox(height: 12),
         EngixPanel(
           child: Row(
