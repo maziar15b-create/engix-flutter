@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:excel/excel.dart' hide Border;
+import '../core/theme.dart';
 import '../core/widgets.dart';
 import 'complete_profile_screen.dart' show roleKeys;
 import 'project_detail_screen.dart';
@@ -49,7 +49,7 @@ class _ProjectsTabState extends State<ProjectsTab> {
       if (!mounted) return;
       setState(() {
         _projects = [];
-        _error = 'خطا در دریافت پروژه‌ها: $e';
+        _error = 'خطا در دریافت پروژهها: $e';
       });
     }
   }
@@ -88,7 +88,7 @@ class _ProjectsTabState extends State<ProjectsTab> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('پروژه‌های من',
+          const Text('پروژههای من',
               style: TextStyle(
                   color: C.redLight, fontSize: 12, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
@@ -104,7 +104,7 @@ class _ProjectsTabState extends State<ProjectsTab> {
           if (projects != null && projects.isEmpty && _error == null)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
-              child: Text('هنوز عضو هیچ پروژه‌ای نیستید.',
+              child: Text('هنوز عضو هیچ پروژهای نیستید.',
                   style: TextStyle(color: C.muted)),
             ),
           if (projects != null)
@@ -268,12 +268,10 @@ class _NewProjectSheetState extends State<_NewProjectSheet> {
             : _roles.toList(),
       });
       if (mounted) Navigator.pop(context, id);
-    }       await st.uploadBinary(xp, _xlsxBytes(sections),
-          fileOptions: FileOptions(
-              contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    await st.uploadBinary(hp, Uint8List.fromList(utf8.encode(_html(sections))),
-          fileOptions: FileOptions(contentType: 'text/html; charset=utf-8', upsert: false));
-
+    } on PostgrestException catch (e) {
+      setState(() {
+        _busy = false;
+        _error = e.message;
       });
     } catch (e) {
       setState(() {
