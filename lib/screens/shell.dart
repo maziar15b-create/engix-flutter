@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/app_settings.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
 import 'home_tab.dart';
 import 'messenger_tab.dart';
+import 'profile/profile_common.dart';
+import 'profile/profile_screen.dart';
+import 'projects_tab.dart';
 import 'social_tab.dart';
 import 'tools_tab.dart';
-import 'projects_tab.dart';
 
 class Shell extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -19,6 +22,7 @@ class Shell extends StatefulWidget {
 
 class _ShellState extends State<Shell> {
   int _index = 0;
+  late Map<String, dynamic> _profile;
 
   static const _tabs = <_TabInfo>[
     _TabInfo('خانه', Icons.home_outlined, Icons.home),
@@ -28,76 +32,44 @@ class _ShellState extends State<Shell> {
     _TabInfo('ابزارها', Icons.build_outlined, Icons.build),
   ];
 
-  String get _roleLabel =>
-      ((widget.profile['active_role'] as Map?)?['label'] ?? '').toString();
-
-  void _openProfileSheet() {
-    final p = widget.profile;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: C.bg2,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  _avatar(44),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text((p['name'] ?? '').toString(),
-                            style: const TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w700)),
-                        if (_roleLabel.isNotEmpty)
-                          Text(_roleLabel,
-                              style: const TextStyle(color: C.soft, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Divider(color: Color(0x33C50337)),
-              ListTile(
-                leading: const Icon(Icons.logout, color: C.danger),
-                title: const Text('خروج از حساب'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await Supabase.instance.client.auth.signOut();
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _profile = Map<String, dynamic>.from(widget.profile);
+    AppSettings.applyFromProfile(_profile);
   }
 
-  Widget _avatar(double size) {
-    final url = widget.profile['avatar_url'] as String?;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: C.bg3,
-        border: Border.all(color: C.line),
-        image: (url != null && url.isNotEmpty)
-            ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)
-            : null,
-      ),
-      child: (url == null || url.isEmpty)
-          ? Icon(Icons.person, size: size * 0.55, color: C.soft)
-          : null,
+  @override
+  void didUpdateWidget(covariant Shell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile != widget.profile) {
+      _profile = Map<String, dynamic>.from(widget.profile);
+      AppSettings.applyFromProfile(_profile);
+    }
+  }
+
+  String get _roleLabel =>
+      ((_profile['active_role'] as Map?)?['label'] ?? '').toString();
+
+  Future<void> _reloadProfile() async {
+    try {
+      final data = await Supabase.instance.client
+          .from('profiles')
+          .select('*, active_role:roles!active_role_id(label)')
+          .eq('id', _profile['id'])
+          .maybeSingle();
+      if (data != null && mounted) {
+        setState(() => _profile = Map<String, dynamic>.from(data));
+        AppSettings.applyFromProfile(_profile);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _openProfile() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ProfileScreen(profile: _profile)),
     );
+    if (mounted) _reloadProfile();
   }
 
   @override
@@ -119,7 +91,14 @@ class _ShellState extends State<Shell> {
                             fontWeight: FontWeight.w800,
                             color: C.redLight)),
                     const Spacer(),
-                    GestureDetector(onTap: _openProfileSheet, child: _avatar(36)),
+                    GestureDetector(
+                      onTap: _openProfile,
+                      child: PfAvatar(
+                        url: _profile['avatar_url']?.toString(),
+                        name: (_profile['name'] ?? '').toString(),
+                        size: 36,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -127,10 +106,10 @@ class _ShellState extends State<Shell> {
                 child: IndexedStack(
                   index: _index,
                   children: [
-                    HomeTab(profile: widget.profile, roleLabel: _roleLabel),
-                    MessengerTab(profile: widget.profile),
-                    ProjectsTab(profile: widget.profile),
-                    SocialTab(profile: widget.profile),
+                    HomeTab(profile: _profile, roleLabel: _roleLabel),
+                    MessengerTab(profile: _profile),
+                    ProjectsTab(profile: _profile),
+                    SocialTab(profile: _profile),
                     const ToolsTab(),
                   ],
                 ),
