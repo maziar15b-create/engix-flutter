@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/app_settings.dart';
 import 'core/config.dart';
 import 'core/theme.dart';
 import 'core/widgets.dart';
@@ -37,6 +38,13 @@ class EngixApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      builder: (context, child) => ValueListenableBuilder<double>(
+        valueListenable: AppSettings.fontScale,
+        builder: (context, scale, _) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)),
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
       home: const Root(),
     );
   }
