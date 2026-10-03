@@ -1,6 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../core/config.dart';
 
 import '../core/theme.dart';
 import '../core/widgets.dart';
@@ -37,6 +42,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   bool _loadingMore = false;
   bool _hasMore = true;
   String? _error;
+  final Set<String> _readIds = {};
 
   @override
   void initState() {
@@ -101,6 +107,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         _loading = false;
         _error = null;
       });
+      _markRead();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -157,6 +164,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                 .any((m) => m['id'].toString() == rec['id'].toString());
             if (exists) return;
             setState(() => _messages.insert(0, rec));
+            if (rec['sender_id'].toString() != _uid) _markRead();
           },
         )
         .onPostgresChanges(
@@ -172,7 +180,55 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             if (i >= 0) setState(() => _messages[i] = rec);
           },
         )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'messages',
+          callback: (payload) {
+            final id = payload.oldRecord['id']?.toString();
+            if (id == null || !mounted) return;
+            setState(() => _messages.removeWhere((m) => m['id'].toString() == id));
+          },
+        )
         .subscribe();
+  }
+
+  // معادل markMessagesAsRead در وب
+  Future<void> _markRead() async {
+    try {
+      final ids = _messages
+          .where((m) =>
+              m['sender_id'].toString() != _uid &&
+              !_readIds.contains(m['id'].toString()))
+          .map((m) => m['id'])
+          .toList();
+      if (ids.isEmpty) return;
+      final now = DateTime.now().toUtc().toIso8601String();
+      await _db.from('message_reads').upsert([
+        for (final id in ids) {'message_id': id, 'user_id': _uid, 'read_at': now}
+      ], onConflict: 'message_id,user_id');
+      _readIds.addAll(ids.map((e) => e.toString()));
+    } catch (_) {}
+  }
+
+  // معادل فراخوانی send-message-push در useMessages.js (بدون await تا ارسال پیام کند نشود)
+  Future<void> _pushMessage(String text) async {
+    try {
+      final token = _db.auth.currentSession?.accessToken;
+      if (token == null) return;
+      await http.post(
+        Uri.parse('${Config.apiBase}/api/notifications/send-message-push'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'conversationId': widget.conversationId,
+          'senderId': _uid,
+          'text': text,
+        }),
+      );
+    } catch (_) {}
   }
 
   Future<void> _send() async {
@@ -191,6 +247,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           .select()
           .single();
       _input.clear();
+      _pushMessage(text);
       if (!mounted) return;
       final exists =
           _messages.any((m) => m['id'].toString() == row['id'].toString());
