@@ -6,9 +6,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import 'academy_screen.dart';
+import 'chat_thread_screen.dart';
+import 'jobs_screen.dart';
 
 const _supportPhone = '09180152153';
-const _siteUrl = 'https://engixapp.ir';
 
 String _fa(Object? v) {
   const d = '۰۱۲۳۴۵۶۷۸۹';
@@ -270,6 +272,47 @@ class _HomeTabState extends State<HomeTab> {
         ));
   }
 
+  Future<void> _messageAuthor(Map<String, dynamic> j) async {
+    try {
+      final conv = await _db.rpc('get_or_create_direct_conversation',
+          params: {'other_user_id': j['author_id'].toString()});
+      if (!mounted) return;
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ChatThreadScreen(
+          profile: widget.profile,
+          conversationId: conv.toString(),
+          title: (j['authorName'] ?? 'گفتگو').toString(),
+        ),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('خطا در شروع گفتگو: $e')));
+    }
+  }
+
+  Future<void> _openJobs([String? folder]) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => JobsScreen(profile: widget.profile, initialFolder: folder),
+    ));
+    _loadJobs();
+  }
+
+  Widget _jobFolder(String icon, String label, String key) => Expanded(
+        child: GestureDetector(
+          onTap: () => _openJobs(key),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: _cardDeco(border: const Color(0x40C50337)),
+            child: Column(children: [
+              Text(icon, style: const TextStyle(fontSize: 26)),
+              const SizedBox(height: 4),
+              Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+        ),
+      );
+
   void _openJob(Map<String, dynamic> j) {
     final phone = (j['phone'] ?? '').toString();
     _sheet((ctx) => SafeArea(
@@ -300,6 +343,18 @@ class _HomeTabState extends State<HomeTab> {
                     onPressed: () => launchUrl(Uri.parse('tel:$phone')),
                     icon: const Icon(Icons.call),
                     label: Text('تماس: ${_fa(phone)}'),
+                  ),
+                ],
+                if (j['author_id'].toString() != _uid) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _messageAuthor(j);
+                    },
+                    icon: const Icon(Icons.chat_bubble_outline),
+                    label: const Text('ارسال پیام'),
                   ),
                 ],
               ],
@@ -437,7 +492,13 @@ class _HomeTabState extends State<HomeTab> {
   Widget _jobsSection() {
     final jobs = _jobs;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _heading(Icons.work_outline, 'فرصت‌های شغلی'),
+      _heading(Icons.work_outline, 'کاریابی و درخواست نیرو'),
+      Row(children: [
+        _jobFolder('🧑‍💼', 'درخواست کار', 'job_seeking'),
+        const SizedBox(width: 10),
+        _jobFolder('🏗️', 'درخواست نیرو', 'hiring'),
+      ]),
+      const SizedBox(height: 10),
       if (jobs == null) _skeleton(2),
       if (jobs != null && jobs.isEmpty) _empty('آگهی فعالی ثبت نشده است.'),
       if (jobs != null)
@@ -456,7 +517,7 @@ class _HomeTabState extends State<HomeTab> {
                     const SizedBox(height: 3),
                     Text(
                       [
-                        j['listing_type'] == 'seeker' ? 'کارجو' : 'کارفرما',
+                        j['listing_type'] == 'hiring' ? 'درخواست نیرو' : 'درخواست کار',
                         if ((j['location'] ?? '').toString().isNotEmpty) j['location'].toString(),
                         if ((j['role'] ?? '').toString().isNotEmpty) j['role'].toString(),
                       ].join(' • '),
@@ -468,6 +529,13 @@ class _HomeTabState extends State<HomeTab> {
               ]),
             ),
           ),
+      Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: TextButton(
+          onPressed: () => _openJobs(),
+          child: const Text('مشاهده‌ی همه و ثبت آگهی', style: TextStyle(fontSize: 12)),
+        ),
+      ),
     ]);
   }
 
@@ -549,7 +617,9 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _academy() => GestureDetector(
-        onTap: () => launchUrl(Uri.parse(_siteUrl), mode: LaunchMode.externalApplication),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => AcademyScreen(profile: widget.profile),
+        )),
         child: Container(
           margin: const EdgeInsets.only(top: 14, bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
