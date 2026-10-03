@@ -7,12 +7,18 @@ import '../core/widgets.dart';
 import 'project_tabs/announcements_tab.dart';
 import 'project_tabs/attendance_tab.dart';
 import 'project_tabs/correspondence_tab.dart';
+import 'project_tabs/daily_report_tab.dart';
 import 'project_tabs/design_tab.dart';
+import 'project_tabs/documents_tab.dart';
 import 'project_tabs/execution_tab.dart';
+import 'project_tabs/export_tab.dart';
 import 'project_tabs/gantt_tab.dart';
 import 'project_tabs/inventory_tab.dart';
+import 'project_tabs/photos_tab.dart';
 import 'project_tabs/qc_tab.dart';
+import 'project_tabs/reports_tab.dart';
 import 'project_tabs/supervision_tab.dart';
+import 'project_tabs/workorder_tab.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -309,6 +315,26 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         return _overview(p);
       case 'members':
         return _membersList();
+      case 'reports':
+        return ReportsTab(
+            projectId: widget.projectId,
+            profile: widget.profile,
+            members: _members ?? const [],
+            projectName: (p['name'] ?? '').toString());
+      case 'workorder':
+        return WorkOrderTab(projectId: widget.projectId, profile: widget.profile);
+      case 'documents':
+        return DocumentsTab(projectId: widget.projectId, profile: widget.profile);
+      case 'photos':
+        return PhotosTab(projectId: widget.projectId, profile: widget.profile);
+      case 'dailyreport':
+        return DailyReportTab(projectId: widget.projectId, profile: widget.profile);
+      case 'export':
+        return ExportTab(
+            projectId: widget.projectId,
+            profile: widget.profile,
+            project: p,
+            members: _members ?? const []);
       case 'design':
         return DesignTab(projectId: widget.projectId, profile: widget.profile);
       case 'execution':
