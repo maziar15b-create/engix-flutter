@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../core/theme.dart';
+import 'package:excel/excel.dart' hide Border;
 import '../core/widgets.dart';
 import 'complete_profile_screen.dart' show roleKeys;
 import 'project_detail_screen.dart';
@@ -268,10 +268,12 @@ class _NewProjectSheetState extends State<_NewProjectSheet> {
             : _roles.toList(),
       });
       if (mounted) Navigator.pop(context, id);
-    } on PostgrestException catch (e) {
-      setState(() {
-        _busy = false;
-        _error = e.message;
+    }       await st.uploadBinary(xp, _xlsxBytes(sections),
+          fileOptions: FileOptions(
+              contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    await st.uploadBinary(hp, Uint8List.fromList(utf8.encode(_html(sections))),
+          fileOptions: FileOptions(contentType: 'text/html; charset=utf-8', upsert: false));
+
       });
     } catch (e) {
       setState(() {
