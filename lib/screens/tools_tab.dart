@@ -297,5 +297,3 @@ class _ToolScreenState extends State<ToolScreen> {
     );
   }
 }
-
-
