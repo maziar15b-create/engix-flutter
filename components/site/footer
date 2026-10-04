@@ -1,0 +1,88 @@
+import Container from "./Container";
+
+const COLUMNS = [
+  {
+    title: "پلتفرم",
+    links: [
+      { label: "امکانات", href: "/features" },
+      { label: "هوش مصنوعی مهندسی", href: "/#ai" },
+      { label: "مدیریت پروژه", href: "/#projects" },
+      { label: "آموزش و کتابخانه", href: "/#education" },
+    ],
+  },
+  {
+    title: "شرکت",
+    links: [
+      { label: "درباره ما", href: "/about" },
+      { label: "تماس با ما", href: "/contact" },
+      { label: "دانلود اپلیکیشن", href: "/#download" },
+    ],
+  },
+  {
+    title: "قوانین",
+    links: [
+      { label: "قوانین استفاده", href: "/terms" },
+      { label: "حریم خصوصی", href: "/privacy" },
+    ],
+  },
+];
+
+export default function Footer() {
+  return (
+    <footer className="border-t border-titanium bg-ink">
+      <Container className="py-14">
+        <div className="grid grid-cols-2 gap-10 md:grid-cols-5">
+          <div className="col-span-2">
+            <span className="font-mono-eng text-lg font-semibold text-paper">
+              Engi<span className="text-alloy">X</span>
+            </span>
+            <p className="mt-3 max-w-xs text-sm leading-6 text-slate">
+              اکوسیستم هوشمند مهندسی برای نسل جدید مهندسان — طراحی، مدیریت پروژه،
+              یادگیری و ابزارهای هوشمند در یک پلتفرم یکپارچه.
+            </p>
+          </div>
+          {COLUMNS.map((col) => (
+            <div key={col.title}>
+              <h3 className="font-mono-eng text-xs uppercase tracking-widest text-slate">
+                {col.title}
+              </h3>
+              <ul className="mt-4 flex flex-col gap-2.5">
+                {col.links.map((link) => (
+                  <li key={link.href}>
+                    <a
+                      href={link.href}
+                      className="text-sm text-paper/80 transition-colors hover:text-alloy"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-titanium pt-6 md:flex-row md:items-center">
+          <span className="font-mono-eng text-[11px] tracking-wider text-slate">
+            © {new Date().getFullYear()} EngiX — DOC A-00 / REV 1.0
+          </span>
+          <span className="text-xs text-slate">ساخته‌شده برای جامعه مهندسی ایران</span>
+          <a
+            referrerPolicy="origin"
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://trustseal.enamad.ir/?id=766413&Code=YLZh5OorCyTDQiHzwle2NXJB73fWZL3O"
+          >
+            <img loading="lazy" decoding="async"
+              referrerPolicy="origin"
+              src="https://trustseal.enamad.ir/logo.aspx?id=766413&Code=YLZh5OorCyTDQiHzwle2NXJB73fWZL3O"
+              alt="نماد اعتماد الکترونیکی"
+              style={{ cursor: "pointer" }}
+            />
+          </a>
+        </div>
+      </Container>
+    </footer>
+  );
+}
+
