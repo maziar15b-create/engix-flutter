@@ -1,0 +1,322 @@
+"use client";
+import { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { supabase } from "../../lib/supabaseClient";
+import { fetchProfilesMap } from "../../lib/messengerUtils";
+import { fetchConversationMembers, getMemberRole } from "../../services/membersService";
+import { clearConversationForMe, hideConversationForMe, deleteConversationCompletely } from "../../services/chatManagementService";
+import { useMessages } from "../../hooks/useMessages";
+import { useTyping } from "../../hooks/useTyping";
+import ChatHeader from "./ChatHeader";
+import MessageList from "./MessageList";
+import MessageInput from "./MessageInput";
+import MembersPanel from "./MembersPanel";
+import SearchPanel from "./SearchPanel";
+
+const GOLD_LIGHT = "#FF3D63";
+const GOLD = "#C50337";
+const GOLD_DEEP = "#7A0224";
+
+export default function ThreadView(props) {
+  const profile = props.profile;
+  const conversationId = props.conversationId;
+  const presence = props.presence;
+  const onBack = props.onBack;
+  const onOpenProfile = props.onOpenProfile;
+
+  const [conversation, setConversation] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [myRole, setMyRole] = useState(null);
+  const [panel, setPanel] = useState("thread");
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [otherUser, setOtherUser] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const messagesApi = useMessages(conversationId, profile.id);
+  const typingApi = useTyping(conversationId, profile.id, profile.name);
+  const { loadPresenceFor } = presence;
+
+  const loadConversationMeta = useCallback(async () => {
+   try {
+    setLoadError(null);
+    const { data: conv, error: convErr } = await supabase
+      .from("conversations")
+      .select("id, type, name, avatar_url, created_by")
+      .eq("id", conversationId)
+      .maybeSingle();
+    if (convErr) {
+      console.error("loadConversationMeta: conversations select failed:", convErr.message);
+    }
+    setConversation(conv);
+
+    const memberRows = await fetchConversationMembers(conversationId);
+    setMembers(memberRows);
+
+    const role = await getMemberRole(conversationId, profile.id);
+    setMyRole(role);
+
+    if (conv && conv.type === "direct") {
+      const otherRow = memberRows.find(function (m) { return m.user_id !== profile.id; });
+      if (otherRow) {
+        const pMap = await fetchProfilesMap([otherRow.user_id]);
+        setOtherUser(pMap[otherRow.user_id] ? pMap[otherRow.user_id] : null);
+        loadPresenceFor([otherRow.user_id]);
+      }
+    } else {
+      loadPresenceFor(memberRows.map(function (m) { return m.user_id; }));
+    }
+   } catch (e) {
+     // هر خطایی که تا این‌جا بی‌صدا throw می‌شد (و کل تابع رو نصفه متوقف
+     // می‌کرد) الان مستقیم روی صفحه نشون داده می‌شه.
+     console.error("loadConversationMeta crashed:", e);
+     setLoadError(e && e.message ? e.message : String(e));
+   }
+    // presence.loadPresenceFor یک شیء جدید در هر رندر است، اما خودِ تابع
+    // loadPresenceFor با useCallback و بدون وابستگی ساخته شده (رفرنس پایدار)؛
+    // به همین دلیل مستقیماً به تابع وابسته‌ایم نه به کل شیء presence، تا این
+    // افکت با هر رندر بی‌دلیل دوباره اجرا نشود (ریسک فراخوانی مکرر/حلقه).
+  }, [conversationId, profile.id, loadPresenceFor]);
+
+  useEffect(() => { loadConversationMeta(); }, [loadConversationMeta]);
+
+  useEffect(() => {
+    if (panel === "thread" && messagesApi.messages.length > 0) {
+      messagesApi.markAsRead();
+    }
+  }, [panel, messagesApi.messages, messagesApi.markAsRead]);
+
+  function getHeaderTitle() {
+    if (!conversation) return "در حال بارگذاری…";
+    if (conversation.type === "direct") {
+      if (otherUser && otherUser.name) return otherUser.name;
+      return "گفتگو";
+    }
+    if (conversation.name) return conversation.name;
+    return "بدون نام";
+  }
+
+  const headerTitle = getHeaderTitle();
+
+  const handleSend = async (params) => {
+    await messagesApi.send({
+      content: params.content,
+      attachment: params.attachment,
+      replyTo: replyingTo ? replyingTo.id : null,
+    });
+    setReplyingTo(null);
+    typingApi.notifyStoppedTyping();
+  };
+
+  const handleForward = async (message, targetConversationId) => {
+    const attachment = message.file_url
+      ? { type: message.type, file_url: message.file_url, file_meta: message.file_meta }
+      : null;
+    await messagesApi.send({
+      content: message.content,
+      attachment: attachment,
+      forwardedFrom: message.sender_id,
+    });
+  };
+
+  const handleClearChat = async () => {
+    if (!confirm("پیام‌های این گفتگو فقط برای شما پاک شود؟")) return;
+    try {
+      await clearConversationForMe(profile.id, conversationId);
+      loadConversationMeta();
+      alert("پیام‌ها پاک شد. برای دیدن تغییر، از گفتگو خارج و دوباره وارد شوید.");
+    } catch (e) {
+      alert("خطا: " + e.message);
+    }
+  };
+
+  const handleDeleteForMe = async () => {
+    setDeleteDialogOpen(false);
+    try {
+      await hideConversationForMe(profile.id, conversationId);
+      onBack();
+    } catch (e) {
+      alert("خطا: " + e.message);
+    }
+  };
+
+  const handleDeleteForBoth = async () => {
+    setDeleteDialogOpen(false);
+    try {
+      await deleteConversationCompletely(conversationId);
+      onBack();
+    } catch (e) {
+      try {
+        await hideConversationForMe(profile.id, conversationId);
+        alert("شما اجازه‌ی حذف کامل این گفتگو را ندارید (فقط سازنده می‌تواند)، فقط برای شما حذف شد.");
+        onBack();
+      } catch (e2) {
+        alert("خطا: " + e2.message);
+      }
+    }
+  };
+
+  if (panel === "members") {
+    return (
+      <FullScreenChatShell>
+        <MembersPanel
+          profile={profile}
+          conversationId={conversationId}
+          conversation={conversation}
+          members={members}
+          myRole={myRole}
+          presence={presence}
+          onBack={() => setPanel("thread")}
+          onMembersChanged={loadConversationMeta}
+        />
+      </FullScreenChatShell>
+    );
+  }
+
+  if (panel === "search") {
+    return (
+      <FullScreenChatShell>
+        <SearchPanel
+          conversationId={conversationId}
+          onBack={() => setPanel("thread")}
+          onJumpToMessage={() => setPanel("thread")}
+        />
+      </FullScreenChatShell>
+    );
+  }
+
+  return (
+    <FullScreenChatShell>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+      <ChatHeader
+        conversation={conversation}
+        title={headerTitle}
+        otherUser={otherUser}
+        members={members}
+        presence={presence}
+        currentUserId={profile.id}
+        onBack={onBack}
+        onOpenMembers={() => setPanel("members")}
+        onOpenSearch={() => setPanel("search")}
+        onClearChat={handleClearChat}
+        onDeleteConversation={() => setDeleteDialogOpen(true)}
+        onOpenProfile={(userId) => {
+          // اول باید خودِ گفتگو (که به‌صورت overlay تمام‌صفحه روی کل برنامه
+          // نمایش داده می‌شود) بسته شود، وگرنه فقط تب زیرین عوض می‌شود ولی
+          // overlay هنوز روی صفحه می‌ماند و کاربر هیچ تغییری نمی‌بیند.
+          if (onBack) onBack();
+          if (onOpenProfile) onOpenProfile(userId);
+        }}
+      />
+
+      {messagesApi.isOffline && (
+        <div
+          style={{
+            fontSize: 11.5, color: "#FBBF24", background: "rgba(251,191,36,0.1)",
+            padding: "6px 10px", textAlign: "center", borderRadius: 6, marginBottom: 6,
+          }}
+        >
+          ⚠️ حالت آفلاین — پیام‌های ذخیره‌شده روی گوشی نشان داده می‌شود؛ ممکن است جدیدترین پیام‌ها هنوز نرسیده باشند.
+        </div>
+      )}
+
+      {loadError && (
+        <div
+          style={{
+            direction: "ltr", textAlign: "left", fontSize: 11, color: "#FF6B6B",
+            background: "#1A0508", padding: "8px 10px", wordBreak: "break-all",
+          }}
+        >
+          خطا در بارگذاری اطلاعات گفتگو: {loadError}
+        </div>
+      )}
+
+      <MessageList
+        messages={messagesApi.messages}
+        loading={messagesApi.loading}
+        loadingMore={messagesApi.loadingMore}
+        hasMore={messagesApi.hasMore}
+        onLoadMore={messagesApi.loadMore}
+        currentUserId={profile.id}
+        members={members}
+        showSenderInfo={conversation && conversation.type !== "direct"}
+        readMessageIds={messagesApi.readMessageIds}
+        typingLabel={typingApi.typingLabel}
+        onReply={setReplyingTo}
+        onEdit={messagesApi.edit}
+        onDelete={messagesApi.remove}
+        onForward={handleForward}
+      />
+
+      <MessageInput
+        conversationId={conversationId}
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
+        onSend={handleSend}
+        onTyping={typingApi.notifyTyping}
+        sending={messagesApi.sending}
+      />
+
+      {deleteDialogOpen && (
+        <>
+          <div onClick={() => setDeleteDialogOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 30 }} />
+          <div
+            style={{
+              position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 31,
+              background: "linear-gradient(160deg, #1D1B22, #0B0A0D)",
+              border: "1px solid rgba(197,3,55,0.3)", borderBottom: "none",
+              borderRadius: "16px 16px 0 0", padding: "18px 16px 26px",
+              boxShadow: "0 -20px 50px -20px rgba(0,0,0,0.9)",
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, textAlign: "center", color: GOLD_LIGHT }}>حذف گفتگو</div>
+            <button onClick={handleDeleteForMe} className="btn-ghost" style={{ width: "100%", padding: "13px", fontSize: 13.5, marginBottom: 8, textAlign: "center" }}>
+              حذف فقط برای من
+            </button>
+            <button onClick={handleDeleteForBoth} className="btn-ghost" style={{ width: "100%", padding: "13px", fontSize: 13.5, marginBottom: 8, textAlign: "center", color: "#E5484D", borderColor: "rgba(229,72,77,0.4)" }}>
+              حذف برای هر دو طرف
+            </button>
+            <button onClick={() => setDeleteDialogOpen(false)} className="btn-primary" style={{ width: "100%", padding: "13px", fontSize: 13.5 }}>
+              انصراف
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+    </FullScreenChatShell>
+  );
+}
+
+/**
+ * پوسته‌ای که کل نمای گفتگو (پیام‌ها/اعضا/جستجو) را مستقل از هر chain
+ * ارتفاعیِ نامطمئن در کامپوننت‌های بالادستی، به‌صورت واقعاً تمام‌صفحه
+ * (نسبت به viewport، نه نسبت به والدها) نمایش می‌دهد. این باعث می‌شود
+ * حتی اگر جایی در بالادست ارتفاع درست پاس داده نشود، باز هم صفحه‌ی چت
+ * درست و تمام‌صفحه دیده شود.
+ */
+function FullScreenChatShell({ children }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const content = (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        height: "100dvh",
+        width: "100vw",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--bg-0)",
+        padding: "16px 16px 12px",
+      }}
+    >
+      {children}
+    </div>
+  );
+
+  if (!mounted) return null;
+  return createPortal(content, document.body);
+}
+
