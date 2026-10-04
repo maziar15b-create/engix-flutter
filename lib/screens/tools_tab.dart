@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../core/api.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import '../tools/dedicated/dedicated_tools.dart';
 import '../tools/tools_data.dart';
 
 class ToolsTab extends StatefulWidget {
@@ -16,9 +17,31 @@ class ToolsTab extends StatefulWidget {
 class _ToolsTabState extends State<ToolsTab> {
   String _query = '';
 
-  void _open(ToolDef t) {
+  // ابزارهای اختصاصی وب (فرم‌های چندبخشی) + ابزارهای فرمولی
+  late final List<_Entry> _all = [
+    for (final d in dedicatedTools) _Entry(d.id, d.name, d.description, d.category, ded: d),
+    for (final t in allTools)
+      if (!dedicatedTools.any((d) => d.id == t.id)) _Entry(t.id, t.name, t.description, t.category, tool: t),
+  ];
+
+  late final List<List<String>> _cats = () {
+    final out = <List<String>>[];
+    out.add(dedicatedExtraCategories[0]); // دفتر فنی
+    for (final c in toolCategories) {
+      out.add(c);
+      if (c[0] == 'civil') out.add(dedicatedExtraCategories[1]); // طراحی سازه بعد از عمران
+    }
+    return out;
+  }();
+
+  void _open(_Entry e) {
+    final ded = e.ded;
+    if (ded != null) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => ded.build()));
+      return;
+    }
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ToolScreen(tool: t)),
+      MaterialPageRoute(builder: (_) => ToolScreen(tool: e.tool!)),
     );
   }
 
@@ -26,7 +49,7 @@ class _ToolsTabState extends State<ToolsTab> {
   Widget build(BuildContext context) {
     final q = _query.trim();
     final searching = q.isNotEmpty;
-    final found = allTools
+    final found = _all
         .where((t) => t.name.contains(q) || t.description.contains(q))
         .toList();
     return Column(
@@ -54,7 +77,7 @@ class _ToolsTabState extends State<ToolsTab> {
               : ListView(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                   children: [
-                    for (final c in toolCategories) ...[
+                    for (final c in _cats) ...[
                       Padding(
                         padding: const EdgeInsets.only(top: 12, bottom: 8),
                         child: Text(
@@ -66,7 +89,7 @@ class _ToolsTabState extends State<ToolsTab> {
                           ),
                         ),
                       ),
-                      for (final t in allTools.where((t) => t.category == c[0]))
+                      for (final t in _all.where((t) => t.category == c[0]))
                         _toolTile(t),
                     ],
                   ],
@@ -76,7 +99,7 @@ class _ToolsTabState extends State<ToolsTab> {
     );
   }
 
-  Widget _toolTile(ToolDef t) {
+  Widget _toolTile(_Entry t) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -112,6 +135,13 @@ class _ToolsTabState extends State<ToolsTab> {
       ),
     );
   }
+}
+
+class _Entry {
+  final String id, name, description, category;
+  final ToolDef? tool;
+  final DedicatedTool? ded;
+  const _Entry(this.id, this.name, this.description, this.category, {this.tool, this.ded});
 }
 
 class ToolScreen extends StatefulWidget {
@@ -267,4 +297,5 @@ class _ToolScreenState extends State<ToolScreen> {
     );
   }
 }
+
 
