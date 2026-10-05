@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
 
 import '../../core/config.dart';
 import '../../core/theme.dart';
@@ -268,11 +269,11 @@ class _ExportTabState extends State<ExportTab> {
     final hp = '${widget.projectId}/$base.html';
     try {
       await st.uploadBinary(xp, _xlsxBytes(sections),
-          fileOptions: FileOptions(
+          fileOptions: const FileOptions(
               contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
               upsert: false));
       await st.uploadBinary(hp, Uint8List.fromList(utf8.encode(_html(sections))),
-          fileOptions: FileOptions(contentType: 'text/html; charset=utf-8', upsert: false));
+          fileOptions: const FileOptions(contentType: 'text/html; charset=utf-8', upsert: false));
     } catch (e) {
       throw Exception('آپلود فایل خروجی ناموفق بود: $e');
     }
