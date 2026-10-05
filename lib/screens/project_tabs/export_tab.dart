@@ -268,11 +268,11 @@ class _ExportTabState extends State<ExportTab> {
     final hp = '${widget.projectId}/$base.html';
     try {
       await st.uploadBinary(xp, _xlsxBytes(sections),
-          fileOptions: const FileOptions(
+          fileOptions: FileOptions(
               contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
               upsert: false));
       await st.uploadBinary(hp, Uint8List.fromList(utf8.encode(_html(sections))),
-          fileOptions: const FileOptions(contentType: 'text/html; charset=utf-8', upsert: false));
+          fileOptions: FileOptions(contentType: 'text/html; charset=utf-8', upsert: false));
     } catch (e) {
       throw Exception('آپلود فایل خروجی ناموفق بود: $e');
     }
