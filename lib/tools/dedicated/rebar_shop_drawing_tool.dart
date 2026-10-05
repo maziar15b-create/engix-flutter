@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide Border;
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
