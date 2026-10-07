@@ -42,20 +42,28 @@ export async function POST(req) {
       .select("name")
       .eq("id", senderId)
       .maybeSingle();
-    const senderName = senderProfile?.name || "پیام جدید در EngiX";
+    let senderName = senderProfile?.name || "پیام جدید در EngiX";
+    const { data: convRow } = await supabaseAdmin
+      .from("conversations")
+      .select("name, type")
+      .eq("id", conversationId)
+      .maybeSingle();
+    if (convRow && convRow.type !== "direct" && convRow.name) {
+      senderName = senderName + " • " + convRow.name;
+    }
 
     // اعضای گفتگو به‌جز خودِ فرستنده را پیدا می‌کنیم
     // (join تو در توی قبلی به‌خاطر مشکل schema cache در دیتابیس خطا
     // می‌داد؛ اینجا با دو کوئری جدا و اتصال دستی جایگزین شده)
     const { data: memberRows, error: membersErr } = await supabaseAdmin
       .from("conversation_members")
-      .select("user_id")
+      .select("user_id, is_muted")
       .eq("conversation_id", conversationId)
       .neq("user_id", senderId);
 
     if (membersErr) throw new Error(membersErr.message);
 
-    const memberIds = (memberRows || []).map((m) => m.user_id);
+    const memberIds = (memberRows || []).filter((m) => !m.is_muted).map((m) => m.user_id);
     let tokens = [];
     if (memberIds.length > 0) {
       const { data: memberProfiles, error: profErr } = await supabaseAdmin
