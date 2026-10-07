@@ -14,8 +14,78 @@ class ToolsTab extends StatefulWidget {
   State<ToolsTab> createState() => _ToolsTabState();
 }
 
+class _CatStyle {
+  final IconData icon;
+  final Color color;
+  const _CatStyle(this.icon, this.color);
+}
+
+const Map<String, _CatStyle> _catStyles = {
+  'technical-office': _CatStyle(Icons.assignment, Color(0xFFFF6B8B)),
+  'structural-design': _CatStyle(Icons.domain, Color(0xFF8E7CFF)),
+  'civil': _CatStyle(Icons.foundation, Color(0xFFFFA14A)),
+  'architecture': _CatStyle(Icons.architecture, Color(0xFF4FC3F7)),
+  'electrical': _CatStyle(Icons.electric_bolt, Color(0xFFFFD166)),
+  'installations': _CatStyle(Icons.plumbing, Color(0xFF2ED5C4)),
+  'mechanical': _CatStyle(Icons.settings, Color(0xFF9AA5B8)),
+  'surveying': _CatStyle(Icons.straighten, Color(0xFF7BDC6A)),
+  'general': _CatStyle(Icons.apps, Color(0xFFB08CFF)),
+};
+
+const _fallbackStyle = _CatStyle(Icons.calculate_outlined, C.redLight);
+
+/// آیکن اختصاصی هر ابزار بر اساس نام؛ اگر نبود آیکن دسته
+IconData _toolIcon(_Entry t) {
+  final n = t.name;
+  const rules = <List<dynamic>>[
+    ['متره', Icons.receipt_long],
+    ['صورت وضعیت', Icons.request_quote],
+    ['بالاسری', Icons.percent],
+    ['آرماتور', Icons.grid_4x4],
+    ['میلگرد', Icons.grid_4x4],
+    ['خاموت', Icons.grid_4x4],
+    ['بتن مگر', Icons.layers],
+    ['بتن', Icons.view_in_ar],
+    ['زلزله', Icons.vibration],
+    ['لرزه', Icons.vibration],
+    ['خاک', Icons.terrain],
+    ['ژئوتک', Icons.terrain],
+    ['دیوار حائل', Icons.terrain],
+    ['فونداسیون', Icons.foundation],
+    ['پی ', Icons.foundation],
+    ['سقف', Icons.roofing],
+    ['بار', Icons.line_weight],
+    ['تبدیل', Icons.swap_horiz],
+    ['واحد', Icons.swap_horiz],
+    ['فولاد', Icons.view_column],
+    ['تیرآهن', Icons.view_column],
+    ['پروفیل', Icons.view_column],
+    ['آسفالت', Icons.add_road],
+    ['قیمت', Icons.attach_money],
+    ['هزینه', Icons.attach_money],
+    ['مالی', Icons.attach_money],
+    ['لوله', Icons.plumbing],
+    ['آب', Icons.water_drop],
+    ['برق', Icons.electric_bolt],
+    ['کابل', Icons.cable],
+    ['حرارت', Icons.thermostat],
+    ['نقشه', Icons.map_outlined],
+    ['زاویه', Icons.straighten],
+    ['مساحت', Icons.square_foot],
+    ['پله', Icons.stairs],
+    ['تیر', Icons.horizontal_rule],
+    ['ستون', Icons.view_week],
+    ['دال', Icons.crop_square],
+  ];
+  for (final r in rules) {
+    if (n.contains(r[0] as String)) return r[1] as IconData;
+  }
+  return (_catStyles[t.category] ?? _fallbackStyle).icon;
+}
+
 class _ToolsTabState extends State<ToolsTab> {
   String _query = '';
+  String _cat = 'all';
 
   // ابزارهای اختصاصی وب (فرم‌های چندبخشی) + ابزارهای فرمولی
   late final List<_Entry> _all = [
@@ -31,7 +101,7 @@ class _ToolsTabState extends State<ToolsTab> {
       out.add(c);
       if (c[0] == 'civil') out.add(dedicatedExtraCategories[1]); // طراحی سازه بعد از عمران
     }
-    return out;
+    return out.where((c) => _all.any((t) => t.category == c[0])).toList();
   }();
 
   void _open(_Entry e) {
@@ -52,10 +122,47 @@ class _ToolsTabState extends State<ToolsTab> {
     final found = _all
         .where((t) => t.name.contains(q) || t.description.contains(q))
         .toList();
+
+    final slivers = <Widget>[];
+    if (searching) {
+      slivers.add(found.isEmpty
+          ? const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                  child: Text('ابزاری پیدا نشد.',
+                      style: TextStyle(color: C.muted))))
+          : _grid(found));
+    } else {
+      for (final c in _cats) {
+        if (_cat != 'all' && _cat != c[0]) continue;
+        final items = _all.where((t) => t.category == c[0]).toList();
+        if (items.isEmpty) continue;
+        final st = _catStyles[c[0]] ?? _fallbackStyle;
+        slivers.add(SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(4, 14, 4, 10),
+            child: Row(children: [
+              Icon(st.icon, size: 18, color: st.color),
+              const SizedBox(width: 8),
+              Text(c[1],
+                  style: TextStyle(
+                      color: st.color,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14)),
+              const SizedBox(width: 8),
+              Text('${items.length}',
+                  style: const TextStyle(color: C.muted, fontSize: 12)),
+            ]),
+          ),
+        ));
+        slivers.add(_grid(items));
+      }
+    }
+
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
           child: TextField(
             onChanged: (v) => setState(() => _query = v),
             decoration: const InputDecoration(
@@ -64,73 +171,124 @@ class _ToolsTabState extends State<ToolsTab> {
             ),
           ),
         ),
+        if (!searching)
+          SizedBox(
+            height: 42,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                _chip('all', 'همه', Icons.dashboard_customize, C.redLight),
+                for (final c in _cats)
+                  _chip(c[0], c[1], (_catStyles[c[0]] ?? _fallbackStyle).icon,
+                      (_catStyles[c[0]] ?? _fallbackStyle).color),
+              ],
+            ),
+          ),
         Expanded(
-          child: searching
-              ? (found.isEmpty
-                  ? const Center(
-                      child: Text('ابزاری پیدا نشد.',
-                          style: TextStyle(color: C.muted)))
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      children: [for (final t in found) _toolTile(t)],
-                    ))
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                  children: [
-                    for (final c in _cats) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12, bottom: 8),
-                        child: Text(
-                          c[1],
-                          style: const TextStyle(
-                            color: C.redLight,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      for (final t in _all.where((t) => t.category == c[0]))
-                        _toolTile(t),
-                    ],
-                  ],
-                ),
+          child: CustomScrollView(
+            slivers: [
+              ...slivers,
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _toolTile(_Entry t) {
+  Widget _chip(String key, String label, IconData icon, Color color) {
+    final sel = _cat == key;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => _open(t),
-        child: EngixPanel(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              const Icon(Icons.calculate_outlined, color: C.redLight),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(t.name,
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 3),
-                    Text(
-                      t.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: C.soft, fontSize: 12, height: 1.6),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_left, color: C.muted),
-            ],
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => setState(() => _cat = key),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: sel ? color.withAlpha(55) : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: sel ? color : const Color(0x33FFFFFF)),
           ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 15, color: sel ? color : C.soft),
+            const SizedBox(width: 6),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: sel ? C.text : C.soft)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _grid(List<_Entry> items) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          mainAxisExtent: 142,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (_, i) => _toolWidget(items[i]),
+          childCount: items.length,
+        ),
+      ),
+    );
+  }
+
+  /// هر ابزار یک ویجت مستقل
+  Widget _toolWidget(_Entry t) {
+    final st = _catStyles[t.category] ?? _fallbackStyle;
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => _open(t),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: st.color.withAlpha(90)),
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [st.color.withAlpha(50), C.bg2, C.bg1],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: st.color.withAlpha(45),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(_toolIcon(t), color: st.color, size: 24),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              t.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w800, fontSize: 13, height: 1.45),
+            ),
+            const Spacer(),
+            Text(
+              t.description,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: C.soft, fontSize: 10.5),
+            ),
+          ],
         ),
       ),
     );
