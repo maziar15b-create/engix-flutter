@@ -363,20 +363,31 @@ class _NewProjectSheetState extends State<_NewProjectSheet> {
             ? List<dynamic>.from(widget.profile['roles'] ?? [])
             : _roles.toList(),
       });
+      // گروه پروژه را تریگر دیتابیس می‌سازد (migration_messenger_v2.sql).
+      // اگر هنوز اجرا نشده بود، همین‌جا به‌صورت دستی ساخته می‌شود.
       try {
-        final convId = 'group_${DateTime.now().microsecondsSinceEpoch}_$uid';
-        await _sb.from('conversations').insert({
-          'id': convId,
-          'type': 'group',
-          'name': _name.text.trim(),
-          'created_by': uid,
-        });
-        await _sb.from('conversation_members').insert({
-          'conversation_id': convId,
-          'user_id': uid,
-          'role': 'owner',
-        });
-        await _sb.from('projects').update({'chat_conversation_id': convId}).eq('id', id);
+        final proj = await _sb
+            .from('projects')
+            .select('chat_conversation_id')
+            .eq('id', id)
+            .maybeSingle();
+        if (proj?['chat_conversation_id'] == null) {
+          final convId = 'proj_$id';
+          await _sb.from('conversations').insert({
+            'id': convId,
+            'type': 'group',
+            'name': _name.text.trim(),
+            'created_by': uid,
+          });
+          await _sb.from('conversation_members').insert({
+            'conversation_id': convId,
+            'user_id': uid,
+            'role': 'owner',
+          });
+          await _sb
+              .from('projects')
+              .update({'chat_conversation_id': convId}).eq('id', id);
+        }
       } catch (_) {}
       if (mounted) Navigator.pop(context, id);
     } on PostgrestException catch (e) {
