@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/app_settings.dart';
+import '../core/push.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
 import 'home_tab.dart';
@@ -37,6 +38,7 @@ class _ShellState extends State<Shell> {
     super.initState();
     _profile = Map<String, dynamic>.from(widget.profile);
     AppSettings.applyFromProfile(_profile);
+    Push.init(_profile);
   }
 
   @override
