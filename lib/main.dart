@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/app_settings.dart';
 import 'core/config.dart';
+import 'core/push.dart';
 import 'core/theme.dart';
 import 'core/widgets.dart';
 import 'screens/auth_screen.dart';
@@ -30,6 +31,8 @@ class EngixApp extends StatelessWidget {
     return MaterialApp(
       title: 'EngiX',
       debugShowCheckedModeBanner: false,
+      navigatorKey: Push.navigatorKey,
+      scaffoldMessengerKey: Push.messengerKey,
       theme: buildTheme(),
       locale: const Locale('fa'),
       supportedLocales: const [Locale('fa'), Locale('en')],
