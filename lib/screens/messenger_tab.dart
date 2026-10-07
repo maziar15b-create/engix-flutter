@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/api.dart';
 import '../core/theme.dart';
+import 'chat/chat_widgets.dart';
 import 'chat_thread_screen.dart';
 
 class MessengerTab extends StatefulWidget {
@@ -127,11 +128,23 @@ class _MessengerTabState extends State<MessengerTab> {
         }
       }
 
+      final unread = <String, int>{};
+      try {
+        final u = await _db.rpc('unread_counts');
+        for (final r in (u as List)) {
+          unread[r['conversation_id'].toString()] =
+              (r['unread'] as num).toInt();
+        }
+      } catch (_) {}
+      for (final c in chats) {
+        c['unread'] = unread[c['id'].toString()] ?? 0;
+      }
+
       await Future.wait(chats.map((c) async {
         try {
           final last = await _db
               .from('messages')
-              .select('content, type, created_at, is_deleted')
+              .select('content, type, created_at, is_deleted, sender_id')
               .eq('conversation_id', c['id'])
               .order('created_at', ascending: false)
               .limit(1);
@@ -269,8 +282,9 @@ class _MessengerTabState extends State<MessengerTab> {
     }
   }
 
-  Future<void> _newGroup() async {
-    final name = await _askText('گروه جدید', 'نام گروه');
+  Future<void> _newGroup({bool channel = false}) async {
+    final kind = channel ? 'کانال' : 'گروه';
+    final name = await _askText('$kind جدید', 'نام $kind');
     if (name == null) return;
     final phones = await _askText(
       'افزودن عضو (اختیاری)',
@@ -278,10 +292,11 @@ class _MessengerTabState extends State<MessengerTab> {
       lines: 3,
     );
     try {
-      final convId = 'group_${DateTime.now().microsecondsSinceEpoch}_$_uid';
+      final convId =
+          '${channel ? 'channel' : 'group'}_${DateTime.now().microsecondsSinceEpoch}_$_uid';
       await _db.from('conversations').insert({
         'id': convId,
-        'type': 'group',
+        'type': channel ? 'channel' : 'group',
         'name': name,
         'created_by': _uid,
       });
@@ -341,6 +356,14 @@ class _MessengerTabState extends State<MessengerTab> {
                 _newGroup();
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.campaign, color: C.redLight),
+              title: const Text('کانال جدید'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _newGroup(channel: true);
+              },
+            ),
           ],
         ),
       ),
@@ -350,19 +373,9 @@ class _MessengerTabState extends State<MessengerTab> {
   String _preview(Map<String, dynamic> c) {
     final last = c['last'];
     if (last is! Map) return 'بدون پیام';
-    if (last['is_deleted'] == true) return 'پیام حذف شد';
-    switch ((last['type'] ?? 'text').toString()) {
-      case 'image':
-        return 'تصویر';
-      case 'pdf':
-        return 'فایل PDF';
-      case 'word':
-        return 'فایل Word';
-      case 'voice':
-        return 'پیام صوتی';
-      default:
-        return (last['content'] ?? '').toString();
-    }
+    return messagePreview((last['type'] ?? 'text').toString(),
+        last['content']?.toString(),
+        deleted: last['is_deleted'] == true);
   }
 
   String _time(Map<String, dynamic> c) {
@@ -380,12 +393,17 @@ class _MessengerTabState extends State<MessengerTab> {
       radius: 24,
       backgroundColor: C.bg3,
       backgroundImage: url.isNotEmpty ? NetworkImage(url) : null,
-      child: url.isEmpty
-          ? Text(
-              title.isEmpty ? '?' : title.substring(0, 1),
-              style: const TextStyle(color: C.redLight, fontWeight: FontWeight.w700),
-            )
-          : null,
+      child: url.isNotEmpty
+          ? null
+          : (c['type'] == 'channel'
+              ? const Icon(Icons.campaign, color: C.redLight)
+              : (c['type'] == 'group'
+                  ? const Icon(Icons.groups, color: C.redLight)
+                  : Text(
+                      title.isEmpty ? '?' : title.substring(0, 1),
+                      style: const TextStyle(
+                          color: C.redLight, fontWeight: FontWeight.w700),
+                    ))),
     );
   }
 
@@ -486,12 +504,43 @@ class _MessengerTabState extends State<MessengerTab> {
                                 _preview(c),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: C.soft),
+                                style: TextStyle(
+                                    color: ((c['unread'] ?? 0) as int) > 0
+                                        ? C.text
+                                        : C.soft),
                               ),
-                              trailing: Text(
-                                _time(c),
-                                style: const TextStyle(
-                                    color: C.muted, fontSize: 11),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    _time(c),
+                                    style: TextStyle(
+                                        color: ((c['unread'] ?? 0) as int) > 0
+                                            ? C.redLight
+                                            : C.muted,
+                                        fontSize: 11),
+                                  ),
+                                  if (((c['unread'] ?? 0) as int) > 0)
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 7, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: c['is_muted'] == true
+                                            ? C.muted
+                                            : C.red,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        '${c['unread']}',
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                ],
                               ),
                             );
                           },
