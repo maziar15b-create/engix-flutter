@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/push.dart';
 import '../../core/theme.dart';
 import 'edit_profile_screen.dart';
 import 'people_screens.dart';
@@ -120,6 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'last_seen': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', id);
     } catch (_) {}
+    await Push.clearToken();
     if (!mounted) return;
     Navigator.of(context).popUntil((r) => r.isFirst);
     await db.auth.signOut();
