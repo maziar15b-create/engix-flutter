@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/api.dart';
+import '../../core/contacts_service.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import '../contacts_picker_screen.dart';
 
+/// اطلاعات گروه / کانال: اعضا، افزودن عضو، مدیر کردن، بی‌صدا، خروج
 class ChatInfoScreen extends StatefulWidget {
   final Map<String, dynamic> profile;
   final String conversationId;
@@ -24,6 +29,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
   bool _loading = true;
   bool _muted = false;
   bool _isProject = false;
+  bool _uploadingAvatar = false;
   String _myRole = 'member';
 
   bool get _isAdmin => _myRole == 'owner' || _myRole == 'admin';
@@ -126,7 +132,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
   }
 
   Future<String?> _ask(String title, String label,
-      {bool phone = false, String initial = ''}) async {
+      {bool phone = false, String initial = '', bool allowEmpty = false}) async {
     final ctl = TextEditingController(text: initial);
     final res = await showDialog<String>(
       context: context,
@@ -150,7 +156,8 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
       ),
     );
     ctl.dispose();
-    if (res == null || res.trim().isEmpty) return null;
+    if (res == null) return null;
+    if (res.trim().isEmpty && !allowEmpty) return null;
     return res.trim();
   }
 
@@ -171,6 +178,127 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
       ),
     );
     return ok == true;
+  }
+
+  void _addMemberMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: C.bg2,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(
+            leading: const Icon(Icons.contacts, color: C.redLight),
+            title: const Text('انتخاب از مخاطبین'),
+            onTap: () {
+              Navigator.pop(ctx);
+              _addFromContacts();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.dialpad, color: C.redLight),
+            title: const Text('با شماره موبایل'),
+            onTap: () {
+              Navigator.pop(ctx);
+              _addMember();
+            },
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _addFromContacts() async {
+    final picked = await Navigator.of(context).push<List<AppContact>>(
+      MaterialPageRoute(
+        builder: (_) => ContactsPickerScreen(
+          selfId: _uid,
+          multi: true,
+          title: 'افزودن از مخاطبین',
+          excludeIds: {for (final m in _members) m['user_id'].toString()},
+        ),
+      ),
+    );
+    if (picked == null || picked.isEmpty) return;
+    try {
+      await _db.from('conversation_members').insert([
+        for (final c in picked)
+          {
+            'conversation_id': widget.conversationId,
+            'user_id': c.id,
+            'role': 'member',
+          }
+      ]);
+      _snack('${picked.length} عضو اضافه شد.');
+      _load();
+    } catch (e) {
+      _snack('خطا: $e');
+    }
+  }
+
+  Future<void> _changeAvatar() async {
+    if (_uploadingAvatar) return;
+    final x = await ImagePicker()
+        .pickImage(source: ImageSource.gallery, imageQuality: 85, maxWidth: 1200);
+    if (x == null) return;
+    final lower = x.name.toLowerCase();
+    final ext = lower.contains('.') ? lower.substring(lower.lastIndexOf('.') + 1) : 'jpg';
+    const allowed = {
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'webp': 'image/webp',
+    };
+    final mime = allowed[ext];
+    if (mime == null) {
+      _snack('فرمت عکس پشتیبانی نمی‌شود. JPG، PNG یا WebP انتخاب کنید.');
+      return;
+    }
+    setState(() => _uploadingAvatar = true);
+    try {
+      final bytes = await x.readAsBytes();
+      final path = '$_uid/conv-${DateTime.now().millisecondsSinceEpoch}.$ext';
+      await _db.storage.from('avatars').uploadBinary(path, bytes,
+          fileOptions: FileOptions(contentType: mime, upsert: true));
+      final url = _db.storage.from('avatars').getPublicUrl(path);
+      final res = await _db
+          .from('conversations')
+          .update({'avatar_url': url})
+          .eq('id', widget.conversationId)
+          .select();
+      if (res.isEmpty) throw Exception('اجازه‌ی تغییر ندارید.');
+      await _load();
+    } catch (e) {
+      _snack('تغییر عکس ناموفق بود: $e');
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
+  Future<void> _editUsername() async {
+    final cur = (_conv?['username'] ?? '').toString();
+    final raw = await _ask('آیدی $_kind', 'مثلاً engix_civil (خالی = حذف آیدی)',
+        initial: cur, allowEmpty: true);
+    if (raw == null) return;
+    var u = raw.toLowerCase();
+    if (u.startsWith('@')) u = u.substring(1);
+    if (u.isNotEmpty && !RegExp(r'^[a-z][a-z0-9_]{4,31}$').hasMatch(u)) {
+      _snack('آیدی باید ۵ تا ۳۲ حرف انگلیسی، عدد یا _ باشد و با حرف شروع شود.');
+      return;
+    }
+    try {
+      final res = await _db
+          .from('conversations')
+          .update({'username': u.isEmpty ? null : u})
+          .eq('id', widget.conversationId)
+          .select();
+      if (res.isEmpty) throw Exception('اجازه‌ی تغییر ندارید.');
+      _snack(u.isEmpty ? 'آیدی حذف شد.' : 'آیدی ذخیره شد.');
+      _load();
+    } on PostgrestException catch (e) {
+      _snack(e.code == '23505' ? 'این آیدی قبلاً گرفته شده است.' : 'خطا: ${e.message}');
+    } catch (e) {
+      _snack('خطا: $e');
+    }
   }
 
   Future<void> _addMember() async {
@@ -213,9 +341,12 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
         initial: (_conv?['name'] ?? '').toString());
     if (name == null) return;
     try {
-      await _db
+      final res = await _db
           .from('conversations')
-          .update({'name': name}).eq('id', widget.conversationId);
+          .update({'name': name})
+          .eq('id', widget.conversationId)
+          .select();
+      if (res.isEmpty) throw Exception('اجازه‌ی تغییر ندارید.');
       _load();
     } catch (e) {
       _snack('خطا: $e');
@@ -309,18 +440,38 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   Center(
-                    child: CircleAvatar(
-                      radius: 40,
-                      backgroundColor: C.bg3,
-                      backgroundImage: (_conv?['avatar_url'] ?? '').toString().isNotEmpty
-                          ? NetworkImage(_conv!['avatar_url'].toString())
-                          : null,
-                      child: (_conv?['avatar_url'] ?? '').toString().isNotEmpty
-                          ? null
-                          : Icon(
-                              _type == 'channel' ? Icons.campaign : Icons.groups,
-                              size: 38,
-                              color: C.redLight),
+                    child: GestureDetector(
+                      onTap: _isAdmin ? _changeAvatar : null,
+                      child: Stack(children: [
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: C.bg3,
+                          backgroundImage:
+                              (_conv?['avatar_url'] ?? '').toString().isNotEmpty
+                                  ? NetworkImage(_conv!['avatar_url'].toString())
+                                  : null,
+                          child: _uploadingAvatar
+                              ? const CircularProgressIndicator(strokeWidth: 2)
+                              : ((_conv?['avatar_url'] ?? '').toString().isNotEmpty
+                                  ? null
+                                  : Icon(
+                                      _type == 'channel' ? Icons.campaign : Icons.groups,
+                                      size: 38,
+                                      color: C.redLight)),
+                        ),
+                        if (_isAdmin)
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                  color: C.red, shape: BoxShape.circle),
+                              child: const Icon(Icons.photo_camera,
+                                  size: 14, color: Colors.white),
+                            ),
+                          ),
+                      ]),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -362,11 +513,35 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
                           title: Text('تغییر نام $_kind'),
                           onTap: _rename,
                         ),
+                      if (!_isProject && (_isAdmin || (_conv?['username'] ?? '').toString().isNotEmpty))
+                        ListTile(
+                          leading: const Icon(Icons.alternate_email, color: C.redLight),
+                          title: const Text('آیدی'),
+                          subtitle: Text(
+                            (_conv?['username'] ?? '').toString().isEmpty
+                                ? 'تنظیم نشده'
+                                : '@${_conv!['username']}',
+                            textDirection: TextDirection.ltr,
+                            textAlign: TextAlign.start,
+                            style: const TextStyle(color: C.soft),
+                          ),
+                          trailing: (_conv?['username'] ?? '').toString().isEmpty
+                              ? null
+                              : IconButton(
+                                  icon: const Icon(Icons.copy, size: 18, color: C.soft),
+                                  onPressed: () {
+                                    Clipboard.setData(
+                                        ClipboardData(text: '@${_conv!['username']}'));
+                                    _snack('آیدی کپی شد.');
+                                  },
+                                ),
+                          onTap: _isAdmin ? _editUsername : null,
+                        ),
                       if (canManage)
                         ListTile(
                           leading: const Icon(Icons.person_add, color: C.redLight),
                           title: const Text('افزودن عضو'),
-                          onTap: _addMember,
+                          onTap: _addMemberMenu,
                         ),
                     ]),
                   ),
