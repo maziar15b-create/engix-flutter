@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/api.dart';
+import '../core/contacts_service.dart';
 import '../core/theme.dart';
 import 'chat/chat_widgets.dart';
+import 'contacts_picker_screen.dart';
 import 'chat_thread_screen.dart';
 
 class MessengerTab extends StatefulWidget {
