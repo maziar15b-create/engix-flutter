@@ -56,23 +56,22 @@ class EngixLogo extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      alignment: Alignment.center,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [C.redLight, C.red, C.redDeep],
-        ),
+        borderRadius: BorderRadius.circular(size * 0.24),
         boxShadow: const [
-          BoxShadow(color: Color(0x8CC50337), blurRadius: 16, offset: Offset(0, 6)),
+          BoxShadow(color: Color(0x55FFB800), blurRadius: 14, offset: Offset(0, 4)),
         ],
       ),
-      child: Text('E',
-          style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: size * 0.44)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.24),
+        child: Image.asset(
+          'assets/images/logo.png',
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.high,
+        ),
+      ),
     );
   }
 }
