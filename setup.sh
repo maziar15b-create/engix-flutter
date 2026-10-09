@@ -10,56 +10,51 @@ for f in android/app/build.gradle android/app/build.gradle.kts; do
   [ -f "$f" ] && sed -i -E 's/(applicationId\s*=?\s*)"com\.engix\.engix"/\1"com.engix.app"/' "$f"
 done
 
-# مجوزهای اینترنت و موقعیت مکانی (GPS پروژه)
+# مجوزها: اینترنت، اعلان، لوکیشن، ضبط صدا
 M=android/app/src/main/AndroidManifest.xml
-for perm in INTERNET ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION RECORD_AUDIO POST_NOTIFICATIONS; do
-  grep -q "android.permission.$perm" "$M" || \
-    sed -i "s#<application#<uses-permission android:name=\"android.permission.$perm\" />\n    <application#" "$M"
+for p in INTERNET POST_NOTIFICATIONS ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION RECORD_AUDIO; do
+  grep -q "android.permission.$p" "$M" || \
+    sed -i "s#<application#<uses-permission android:name=\"android.permission.$p\" />\n    <application#" "$M"
 done
-
-# کانال پیش‌فرض نوتیفیکیشن (همان channelId که سرور می‌فرستد)
-grep -q "default_notification_channel_id" "$M" || \
-  perl -0pi -e 's#(<application[^>]*>)#$1\n        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="engix_default" />#' "$M"
-
-# فایربیس: کپی google-services.json و افزودن پلاگین
-cp -f google-services.json android/app/google-services.json
-if [ -f android/settings.gradle.kts ]; then
-  grep -q "google-services" android/settings.gradle.kts || \
-    sed -i 's#id("org.jetbrains.kotlin.android") version#id("com.google.gms.google-services") version "4.4.2" apply false\n    id("org.jetbrains.kotlin.android") version#' android/settings.gradle.kts
-  grep -q "google-services" android/app/build.gradle.kts || \
-    sed -i 's#id("dev.flutter.flutter-gradle-plugin")#id("dev.flutter.flutter-gradle-plugin")\n    id("com.google.gms.google-services")#' android/app/build.gradle.kts
-  sed -i -E 's/minSdk\s*=\s*flutter\.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts
-fi
 
 # نام اپ روی گوشی
 sed -i 's#android:label="[^"]*"#android:label="EngiX"#' "$M"
 
-# رفع خطای compileSdk پلاگین‌ها (file_picker و ...): همه را روی ۳۶ می‌بریم
-if [ -f android/build.gradle.kts ]; then
-  cat > /tmp/sdkfix.kts <<'EOT'
-subprojects {
-    afterEvaluate {
-        (extensions.findByName("android") as? com.android.build.gradle.BaseExtension)?.compileSdkVersion(36)
-    }
-}
-
-EOT
-  cat /tmp/sdkfix.kts android/build.gradle.kts > /tmp/build_new.kts
-  mv /tmp/build_new.kts android/build.gradle.kts
-elif [ -f android/build.gradle ]; then
-  cat > /tmp/sdkfix.gradle <<'EOT'
-subprojects {
-    afterEvaluate { p ->
-        if (p.hasProperty('android')) {
-            p.android.compileSdkVersion 36
-        }
-    }
-}
-
-EOT
-  cat /tmp/sdkfix.gradle android/build.gradle > /tmp/build_new.gradle
-  mv /tmp/build_new.gradle android/build.gradle
+# ───── Firebase (اعلان پوش) ─────
+# فایل google-services.json را از پروژه‌ی وب بردار و کنار همین فایل (ریشه‌ی پروژه) بگذار
+if [ -f google-services.json ]; then
+  cp google-services.json android/app/google-services.json
+else
+  echo "هشدار: google-services.json در ریشه‌ی پروژه پیدا نشد؛ اعلان پوش کار نخواهد کرد."
 fi
 
+# پلاگین google-services در settings (Kotlin DSL یا Groovy)
+for f in android/settings.gradle.kts android/settings.gradle; do
+  if [ -f "$f" ] && ! grep -q 'com.google.gms.google-services' "$f"; then
+    if [[ "$f" == *.kts ]]; then
+      sed -i '/id("org.jetbrains.kotlin.android")/a\    id("com.google.gms.google-services") version "4.4.2" apply false' "$f"
+    else
+      sed -i '/id "org.jetbrains.kotlin.android"/a\    id "com.google.gms.google-services" version "4.4.2" apply false' "$f"
+    fi
+  fi
+done
+
+# پلاگین در ماژول app + حداقل SDK برابر ۲۴ (لازم برای Firebase)
+for f in android/app/build.gradle.kts android/app/build.gradle; do
+  if [ -f "$f" ] && ! grep -q 'com.google.gms.google-services' "$f"; then
+    if [[ "$f" == *.kts ]]; then
+      sed -i '/id("dev.flutter.flutter-gradle-plugin")/a\    id("com.google.gms.google-services")' "$f"
+    else
+      sed -i '/id "dev.flutter.flutter-gradle-plugin"/a\    id "com.google.gms.google-services"' "$f"
+    fi
+  fi
+  [ -f "$f" ] && sed -i -E 's/minSdk(Version)?(\s*=\s*|\s+)flutter\.minSdkVersion/minSdk\2 24/' "$f"
+done
+
 flutter pub get
+
+# آیکن و Splash از لوگوی assets/icon/icon.png و assets/images/logo.png
+dart run flutter_launcher_icons
+dart run flutter_native_splash:create
+
 echo "آماده شد. برای اجرا: flutter run    |    برای ساخت APK: flutter build apk --release"
