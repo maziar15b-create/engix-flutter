@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import 'tab_common.dart';
 
-const _statusLabels = {'present': 'حاضر', 'absent': 'غایب', 'half': 'نیمه‌روز'};
+const _statusLabels = {'present': 'حاضر', 'absent': 'غایب', 'half': 'نیمهروز'};
 const _statusColors = {
   'present': Color(0xFF4ADE80),
   'absent': Color(0xFFF87171),
@@ -118,7 +118,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
         for (final e in grouped.entries) ...[
           Padding(
             padding: const EdgeInsets.only(top: 6, bottom: 6),
-            child: Text('${e.key}  (${e.value.length} نفر)',
+            child: Text('${faDate(e.key)}  (${e.value.length} نفر)',
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.soft)),
           ),
           for (final r in e.value)
