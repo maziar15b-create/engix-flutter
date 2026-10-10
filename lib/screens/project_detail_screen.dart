@@ -365,9 +365,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       case 'design':
         return DesignTab(projectId: id, profile: prof);
       case 'execution':
-        return ExecutionTab(projectId: id);
+        return ExecutionTab(projectId: id, profile: prof, members: members);
       case 'supervision':
-        return SupervisionTab(projectId: id, profile: prof);
+        return SupervisionTab(projectId: id, profile: prof, members: members);
       case 'gantt':
         return GanttTab(projectId: id, profile: prof);
       case 'statement':
