@@ -52,7 +52,7 @@ class _WorkOrderTabState extends State<WorkOrderTab> {
       padding: const EdgeInsets.all(16),
       children: [
         const TabHeader('دستورکار / صورتجلسه',
-            subtitle: 'صورتجلسات رسمی کارگاهی با حاضرین، مصوبات و اقدامات پیگیری‌شدنی.'),
+            subtitle: 'صورتجلسات رسمی کارگاهی با حاضرین، مصوبات و اقدامات پیگیریشدنی.'),
         FilledButton(
             onPressed: () => setState(() {
                   _activeId = null;
@@ -72,7 +72,7 @@ class _WorkOrderTabState extends State<WorkOrderTab> {
                 Expanded(
                     child: Text('${o['title']}',
                         style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600))),
-                Text('${o['meeting_date']}', style: const TextStyle(fontSize: 11, color: C.muted)),
+                Text(faDate(o['meeting_date']), style: const TextStyle(fontSize: 11, color: C.muted)),
               ]),
             ),
           ),
