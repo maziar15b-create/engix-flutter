@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/jalali.dart';
 import '../../core/secure_api.dart';
 import '../../core/theme.dart';
 import 'profile_common.dart';
@@ -67,7 +68,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     }
   }
 
-  // --------------------------------------------------------------- مسدودی‌ها
+  // --------------------------------------------------------------- مسدودیها
 
   Future<void> _loadBlocked() async {
     try {
@@ -122,7 +123,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
       setState(() {
         _pinEnabled = data['enabled'] == true;
         _pinCtl.clear();
-        _pinMsg = _pinEnabled ? 'رمز دو مرحله‌ای فعال شد.' : 'رمز دو مرحله‌ای غیرفعال شد.';
+        _pinMsg = _pinEnabled ? 'رمز دو مرحله‌ای فعال شد.' : 'رمز دو مرحلهای غیرفعال شد.';
       });
     } catch (e) {
       if (mounted) setState(() => _pinMsg = e.toString());
@@ -131,7 +132,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     }
   }
 
-  // ------------------------------------------------------------------ نشست‌ها
+  // ------------------------------------------------------------------ نشستها
 
   String get _deviceLabel {
     String os;
@@ -197,12 +198,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     _loadSessions();
   }
 
-  String _fmt(dynamic iso) {
-    final d = DateTime.tryParse((iso ?? '').toString())?.toLocal();
-    if (d == null) return '';
-    return faNum(
-        '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}');
-  }
+  String _fmt(dynamic iso) => faDateTime(iso);
 
   Widget _vis(String label, String value, ValueChanged<String> on) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
@@ -276,7 +272,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 onPressed: _pinBusy ? null : _savePin,
                 child: Text(_pinBusy
                     ? '...'
-                    : (_pinCtl.text.trim().isEmpty ? 'غیرفعال کردن' : 'فعال‌سازی')),
+                    : (_pinCtl.text.trim().isEmpty ? 'غیرفعال کردن' : 'فعالسازی')),
               ),
               if (_pinMsg.isNotEmpty)
                 Padding(
@@ -330,13 +326,13 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                         padding: const EdgeInsets.only(top: 8),
                         child: OutlinedButton(
                           onPressed: _revokeOthers,
-                          child: const Text('خروج از همه‌ی نشست‌های دیگر'),
+                          child: const Text('خروج از همهی نشست‌های دیگر'),
                         ),
                       ),
                   ]),
           ),
           const PfTitle('کاربران مسدود شده',
-              sub: 'کاربرانی که از پروفایل، چت یا شبکه اجتماعی مسدود می‌کنید هم اینجا نمایش داده می‌شوند.'),
+              sub: 'کاربرانی که از پروفایل، چت یا شبکه اجتماعی مسدود میکنید هم اینجا نمایش داده می‌شوند.'),
           PfCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(children: [
