@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/push.dart';
 import '../../core/theme.dart';
+import '../admin_panel_screen.dart';
 import 'edit_profile_screen.dart';
 import 'people_screens.dart';
 import 'privacy_security_screen.dart';
@@ -187,6 +188,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _tile(Icons.search, 'جستجوی مهندس',
                 sub: 'پیدا کردن پروفایل با کد نظام مهندسی یا آیدی',
                 onTap: () => _open(SearchEngineerScreen(viewer: _p))),
+            if (_p['is_admin'] == true) ...[
+              const PfTitle('مدیریت'),
+              _tile(Icons.admin_panel_settings, 'پنل مدیریت',
+                  sub: 'تبلیغات، آگهی‌ها و آمار',
+                  onTap: () => _open(AdminPanelScreen(profile: _p))),
+            ],
             const PfTitle('تنظیمات'),
             _tile(Icons.lock_outline, 'حریم خصوصی و امنیت',
                 sub: 'رمز دو مرحله‌ای، نشست‌ها، کاربران مسدود',
