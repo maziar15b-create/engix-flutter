@@ -177,7 +177,7 @@ class _GanttTabState extends State<GanttTab> {
                   style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600))),
         ]),
         const SizedBox(height: 2),
-        Text('${t['start_date']} — $dur روز — ${prog.round()}٪',
+        Text('${faDate(t['start_date'])} — $dur روز — ${prog.round()}٪',
             style: const TextStyle(fontSize: 11, color: C.muted)),
         const SizedBox(height: 8),
         LayoutBuilder(builder: (ctx, c) {
