@@ -121,7 +121,7 @@ class _PhotosTabState extends State<PhotosTab> {
         for (final e in grouped.entries) ...[
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(e.key,
+            child: Text(faDate(e.key),
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.soft)),
           ),
           GridView.count(
