@@ -5,7 +5,10 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/api.dart' show toLatinDigits;
+import '../../core/jalali.dart';
 import '../../core/theme.dart';
+
+export '../../core/jalali.dart';
 
 SupabaseClient get sb => Supabase.instance.client;
 
@@ -58,15 +61,9 @@ Future<bool> confirmDialog(BuildContext c, String msg) async {
   return r == true;
 }
 
-Future<String?> pickDateStr(BuildContext c, String current) async {
-  final init = DateTime.tryParse(current) ?? DateTime.now();
-  final d = await showDatePicker(
-    context: c,
-    initialDate: init,
-    firstDate: DateTime(2000),
-    lastDate: DateTime(2100),
-  );
-  return d == null ? null : fmtDate(d);
+/// انتخاب تاریخ شمسی؛ مقدار برگشتی میلادی yyyy-MM-dd است (برای ذخیره در دیتابیس)
+Future<String?> pickDateStr(BuildContext c, String current) {
+  return showJalaliDatePicker(c, initial: current);
 }
 
 /// معادل fetchProfilesMap در وب: id -> {id, name, ...}
@@ -202,7 +199,7 @@ class DateField extends StatelessWidget {
             child: Row(children: [
               const Icon(Icons.event, size: 16, color: C.muted),
               const SizedBox(width: 8),
-              Text(value, style: const TextStyle(fontSize: 13.5)),
+              Text(faDate(value), style: const TextStyle(fontSize: 13.5)),
             ]),
           ),
         ),
