@@ -72,7 +72,7 @@ class _DailyReportTabState extends State<DailyReportTab> {
             child: TabCard(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Text('${r['report_date']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(faDate(r['report_date']), style: const TextStyle(fontWeight: FontWeight.w700)),
                   const SizedBox(width: 10),
                   if ('${r['weather'] ?? ''}'.isNotEmpty)
                     Text('${r['weather']}', style: const TextStyle(fontSize: 12, color: C.redLight)),
