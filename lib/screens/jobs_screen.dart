@@ -128,7 +128,14 @@ class _JobsScreenState extends State<JobsScreen> {
       ),
     );
     if (ok != true) return;
-    await _db.from('job_listings').delete().eq('id', item['id']);
+    try {
+      final res = await _db.from('job_listings').delete().eq('id', item['id']).select();
+      if (res.isEmpty && mounted) {
+        setState(() => _error = 'اجازه‌ی حذف این آگهی را ندارید.');
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = 'خطا در حذف آگهی: $e');
+    }
     _load();
   }
 
@@ -188,6 +195,7 @@ class _JobsScreenState extends State<JobsScreen> {
 
   Widget _card(Map<String, dynamic> item) {
     final mine = item['author_id'].toString() == _uid;
+    final isAdmin = widget.profile['is_admin'] == true;
     final phone = (item['phone'] ?? '').toString();
     final type = item['listing_type'] == 'hiring' ? 'درخواست نیرو' : 'درخواست کار';
     final closed = item['status'] != 'active';
@@ -248,6 +256,17 @@ class _JobsScreenState extends State<JobsScreen> {
               ),
             ),
           ]),
+        if (!mine && isAdmin)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: C.danger, minimumSize: const Size.fromHeight(40)),
+              onPressed: () => _delete(item),
+              icon: const Icon(Icons.admin_panel_settings, size: 18),
+              label: const Text('حذف آگهی (مدیریت)'),
+            ),
+          ),
         if (mine)
           Row(children: [
             if (!closed)
