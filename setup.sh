@@ -1,24 +1,28 @@
 #!/usr/bin/env bash
-# یک‌بار اجرا کن: پوشه‌های android و ios را می‌سازد و تنظیمات لازم را اعمال می‌کند
+# یک‌بار اجرا کن: پوشه‌های android و ios را می‌سازد و تنظیمات لازم را اعمال میکند
 set -e
 
 flutter create . --org com.engix --project-name engix --platforms android,ios
 rm -f test/widget_test.dart
 
-# همان applicationId اپ قبلی (برای آپدیت روی همان لیست گوگل‌پلی)
+# همان applicationId اپ قبلی (برای آپدیت روی همان لیست گوگلپلی)
 for f in android/app/build.gradle android/app/build.gradle.kts; do
   [ -f "$f" ] && sed -i -E 's/(applicationId\s*=?\s*)"com\.engix\.engix"/\1"com.engix.app"/' "$f"
 done
 
-# مجوزها: اینترنت، اعلان، لوکیشن، ضبط صدا
+# مجوزها: اینترنت، اعلان، لوکیشن، ضبط صدا، مخاطبین
 M=android/app/src/main/AndroidManifest.xml
-for p in INTERNET POST_NOTIFICATIONS ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION RECORD_AUDIO; do
+for p in INTERNET POST_NOTIFICATIONS ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION RECORD_AUDIO READ_CONTACTS; do
   grep -q "android.permission.$p" "$M" || \
     sed -i "s#<application#<uses-permission android:name=\"android.permission.$p\" />\n    <application#" "$M"
 done
 
 # نام اپ روی گوشی
 sed -i 's#android:label="[^"]*"#android:label="EngiX"#' "$M"
+
+# کانال پیش‌فرض نوتیفیکیشن (همان channelId که سرور در پوش می‌فرستد)
+grep -q "default_notification_channel_id" "$M" || \
+  perl -0pi -e 's#(<application[^>]*>)#$1\n        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="engix_default" />#' "$M"
 
 # ───── Firebase (اعلان پوش) ─────
 # فایل google-services.json را از پروژه‌ی وب بردار و کنار همین فایل (ریشه‌ی پروژه) بگذار
