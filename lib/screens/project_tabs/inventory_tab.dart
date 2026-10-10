@@ -112,7 +112,7 @@ class _InventoryTabState extends State<InventoryTab> {
     ];
     for (final t in _tx!) {
       lines.add([
-        '${t['transaction_date']}',
+        faDate(t['transaction_date']),
         _q('${t['material_code'] ?? ''}'),
         _q('${t['material_name']}'),
         t['transaction_type'] == 'in' ? 'ورود' : 'خروج',
@@ -263,7 +263,7 @@ class _InventoryTabState extends State<InventoryTab> {
                   Text('${t['material_name']} — ${fmtNum((t['quantity'] as num).toDouble(), 3)} ${t['unit']}',
                       style: const TextStyle(fontSize: 13)),
                   Text(
-                      '${t['transaction_date']}${(t['notes'] ?? '').toString().isNotEmpty ? ' — ${t['notes']}' : ''}',
+                      '${faDate(t['transaction_date'])}${(t['notes'] ?? '').toString().isNotEmpty ? ' — ${t['notes']}' : ''}',
                       style: const TextStyle(fontSize: 11, color: C.muted)),
                 ]),
               ),
