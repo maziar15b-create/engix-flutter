@@ -127,7 +127,7 @@ class _StatementTabState extends State<StatementTab> {
                 Expanded(
                     child: Text('صورت‌وضعیت شماره ${s['statement_number']}',
                         style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600))),
-                Text('${s['statement_date']}', style: const TextStyle(fontSize: 11, color: C.muted)),
+                Text(faDate(s['statement_date']), style: const TextStyle(fontSize: 11, color: C.muted)),
               ]),
             ),
           ),
