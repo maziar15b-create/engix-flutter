@@ -117,7 +117,7 @@ class _DocumentsTabState extends State<DocumentsTab> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${d['title']}', style: const TextStyle(fontSize: 13.5)),
-                  Text('${d['category'] ?? ''} — ${'${d['created_at']}'.substring(0, 10)}',
+                  Text('${d['category'] ?? ''} — ${faDate(d['created_at'])}',
                       style: const TextStyle(fontSize: 11, color: C.muted)),
                 ]),
               ),
