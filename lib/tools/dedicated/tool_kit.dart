@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/api.dart' show toLatinDigits;
+import '../../core/jalali.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 
@@ -116,7 +117,7 @@ class NumInput extends StatelessWidget {
   }
 }
 
-/// دو ورودی کنار هم (مثل grid دو ستونه‌ی وب)
+/// دو ورودی کنار هم (مثل grid دو ستونهی وب)
 class FieldGrid extends StatelessWidget {
   final List<Widget> children;
   const FieldGrid(this.children, {super.key});
@@ -304,7 +305,7 @@ class _ToolHistoryPanelState extends State<ToolHistoryPanel> {
         content: TextField(
             controller: ctl,
             autofocus: true,
-            decoration: const InputDecoration(hintText: 'عنوان (مثلاً: پروژه احمدی)')),
+            decoration: const InputDecoration(hintText: 'عنوان (مثلا: پروژه احمدی)')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('انصراف')),
           TextButton(onPressed: () => Navigator.pop(ctx, ctl.text), child: const Text('ذخیره')),
@@ -352,7 +353,7 @@ class _ToolHistoryPanelState extends State<ToolHistoryPanel> {
       child: Row(children: [
         Expanded(child: OutlinedButton(onPressed: _save, child: const Text('💾 ذخیره در سابقه'))),
         const SizedBox(width: 8),
-        Expanded(child: OutlinedButton(onPressed: _openHistory, child: const Text('📂 سابقه‌ی ذخیره‌شده'))),
+        Expanded(child: OutlinedButton(onPressed: _openHistory, child: const Text('📂 سابقهی ذخیره‌شده'))),
       ]),
     );
   }
@@ -410,12 +411,7 @@ class _HistorySheetState extends State<_HistorySheet> {
     } catch (_) {}
   }
 
-  String _when(dynamic iso) {
-    final d = DateTime.tryParse('$iso')?.toLocal();
-    if (d == null) return '';
-    String p(int n) => n.toString().padLeft(2, '0');
-    return '${d.year}-${p(d.month)}-${p(d.day)}  ${p(d.hour)}:${p(d.minute)}';
-  }
+  String _when(dynamic iso) => faDateTime(iso);
 
   @override
   Widget build(BuildContext context) {
@@ -427,7 +423,7 @@ class _HistorySheetState extends State<_HistorySheet> {
             padding: const EdgeInsets.fromLTRB(16, 14, 8, 6),
             child: Row(children: [
               const Expanded(
-                  child: Text('سابقه‌ی ذخیره‌شده',
+                  child: Text('سابقه‌ی ذخیرهشده',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700))),
               TextButton(onPressed: () => Navigator.pop(context), child: const Text('بستن')),
             ]),
