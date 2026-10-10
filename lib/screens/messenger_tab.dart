@@ -7,8 +7,8 @@ import '../core/api.dart';
 import '../core/contacts_service.dart';
 import '../core/theme.dart';
 import 'chat/chat_widgets.dart';
-import 'contacts_picker_screen.dart';
 import 'chat_thread_screen.dart';
+import 'contacts_picker_screen.dart';
 
 class MessengerTab extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -284,15 +284,145 @@ class _MessengerTabState extends State<MessengerTab> {
     }
   }
 
+  /// پیام جدید از مخاطبین
+  Future<void> _newDirectFromContacts() async {
+    final picked = await Navigator.of(context).push<List<AppContact>>(
+      MaterialPageRoute(
+        builder: (_) => ContactsPickerScreen(
+          selfId: _uid,
+          multi: false,
+          title: 'پیام جدید',
+        ),
+      ),
+    );
+    if (picked == null || picked.isEmpty) return;
+    final c = picked.first;
+    try {
+      final convId = await _db.rpc(
+        'get_or_create_direct_conversation',
+        params: {'other_user_id': c.id},
+      );
+      if (!mounted) return;
+      _openThread(convId.toString(), c.contactName);
+    } catch (e) {
+      _snack(e.toString());
+    }
+  }
+
+  Future<void> _syncContacts() async {
+    _snack('در حال همگام‌سازی مخاطبین...');
+    try {
+      final list = await ContactsService.sync(_uid, force: true);
+      _snack('همگام‌سازی انجام شد: ${list.length} مخاطب شما در EngiX هستند.');
+    } on ContactsPermissionException {
+      _snack('اجازه‌ی دسترسی به مخاطبین داده نشده است.');
+    } catch (e) {
+      _snack('همگام‌سازی ناموفق بود: $e');
+    }
+  }
+
+  /// پیوستن به گروه/کانال عمومی با آیدی
+  Future<void> _joinByUsername() async {
+    final raw = await _askText('پیوستن با آیدی', 'آیدی گروه یا کانال');
+    if (raw == null) return;
+    var u = raw.toLowerCase().trim();
+    if (u.startsWith('@')) u = u.substring(1);
+    try {
+      final conv = await _db
+          .from('conversations')
+          .select('id, name, type')
+          .eq('username', u)
+          .maybeSingle();
+      if (conv == null) {
+        _snack('گروه یا کانالی با این آیدی پیدا نشد.');
+        return;
+      }
+      try {
+        await _db.from('conversation_members').insert({
+          'conversation_id': conv['id'],
+          'user_id': _uid,
+          'role': 'member',
+        });
+      } on PostgrestException catch (e) {
+        if (e.code != '23505') rethrow; // قبلاً عضو بوده
+      }
+      if (!mounted) return;
+      _openThread(conv['id'].toString(), (conv['name'] ?? '').toString());
+    } catch (e) {
+      _snack('پیوستن ممکن نشد: $e');
+    }
+  }
+
+  /// انتخاب اعضا برای گروه/کانال جدید: مخاطبین یا شماره
+  Future<List<String>> _pickInitialMembers() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: C.bg2,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(
+            padding: EdgeInsets.all(14),
+            child: Text('افزودن عضو', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          ListTile(
+            leading: const Icon(Icons.contacts, color: C.redLight),
+            title: const Text('انتخاب از مخاطبین'),
+            onTap: () => Navigator.pop(ctx, 'contacts'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.dialpad, color: C.redLight),
+            title: const Text('وارد کردن شماره‌ها'),
+            onTap: () => Navigator.pop(ctx, 'phones'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.skip_next, color: C.muted),
+            title: const Text('بدون عضو (بعداً اضافه می‌کنم)'),
+            onTap: () => Navigator.pop(ctx, 'none'),
+          ),
+        ]),
+      ),
+    );
+    final ids = <String>[];
+    if (choice == 'contacts') {
+      if (!mounted) return ids;
+      final picked = await Navigator.of(context).push<List<AppContact>>(
+        MaterialPageRoute(
+          builder: (_) => ContactsPickerScreen(
+            selfId: _uid,
+            multi: true,
+            title: 'انتخاب اعضا',
+          ),
+        ),
+      );
+      if (picked != null) ids.addAll(picked.map((c) => c.id));
+    } else if (choice == 'phones') {
+      final phones = await _askText(
+        'افزودن عضو',
+        'شماره‌ها با ویرگول جدا شوند',
+        lines: 3,
+      );
+      if (phones != null) {
+        var notFound = 0;
+        for (final p in phones.split(RegExp(r'[,\n،]'))) {
+          if (p.trim().isEmpty) continue;
+          final id = await _userIdByPhone(p);
+          if (id == null) {
+            notFound++;
+          } else {
+            ids.add(id);
+          }
+        }
+        if (notFound > 0) _snack('$notFound شماره پیدا نشد.');
+      }
+    }
+    return ids;
+  }
+
   Future<void> _newGroup({bool channel = false}) async {
     final kind = channel ? 'کانال' : 'گروه';
     final name = await _askText('$kind جدید', 'نام $kind');
     if (name == null) return;
-    final phones = await _askText(
-      'افزودن عضو (اختیاری)',
-      'شماره‌ها با ویرگول جدا شوند',
-      lines: 3,
-    );
+    final memberIds = await _pickInitialMembers();
     try {
       final convId =
           '${channel ? 'channel' : 'group'}_${DateTime.now().microsecondsSinceEpoch}_$_uid';
@@ -305,25 +435,13 @@ class _MessengerTabState extends State<MessengerTab> {
       final rows = <Map<String, dynamic>>[
         {'conversation_id': convId, 'user_id': _uid, 'role': 'owner'},
       ];
-      var notFound = 0;
-      if (phones != null) {
-        final seen = <String>{_uid};
-        for (final p in phones.split(RegExp(r'[,\n،]'))) {
-          if (p.trim().isEmpty) continue;
-          final id = await _userIdByPhone(p);
-          if (id == null) {
-            notFound++;
-          } else if (seen.add(id)) {
-            rows.add({
-              'conversation_id': convId,
-              'user_id': id,
-              'role': 'member',
-            });
-          }
+      final seen = <String>{_uid};
+      for (final id in memberIds) {
+        if (seen.add(id)) {
+          rows.add({'conversation_id': convId, 'user_id': id, 'role': 'member'});
         }
       }
       await _db.from('conversation_members').insert(rows);
-      if (notFound > 0) _snack('$notFound شماره پیدا نشد.');
       if (!mounted) return;
       _openThread(convId, name);
     } catch (e) {
@@ -343,8 +461,16 @@ class _MessengerTabState extends State<MessengerTab> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.contacts, color: C.redLight),
+              title: const Text('پیام جدید از مخاطبین'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _newDirectFromContacts();
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.person_add_alt_1, color: C.redLight),
-              title: const Text('گفتگوی خصوصی'),
+              title: const Text('گفتگوی جدید با شماره'),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _newDirect();
@@ -364,6 +490,22 @@ class _MessengerTabState extends State<MessengerTab> {
               onTap: () {
                 Navigator.of(ctx).pop();
                 _newGroup(channel: true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.alternate_email, color: C.redLight),
+              title: const Text('پیوستن با آیدی'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _joinByUsername();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.sync, color: C.redLight),
+              title: const Text('همگام‌سازی مخاطبین'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _syncContacts();
               },
             ),
           ],
