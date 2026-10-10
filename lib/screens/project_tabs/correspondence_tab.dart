@@ -148,7 +148,7 @@ class _CorrespondenceTabState extends State<CorrespondenceTab> {
               Row(children: [
                 Expanded(
                   child: Text(
-                      '${(i['letter_number'] ?? '').toString().isNotEmpty ? 'شماره ${i['letter_number']} — ' : ''}${i['correspondence_date']}',
+                      '${(i['letter_number'] ?? '').toString().isNotEmpty ? 'شماره ${i['letter_number']} — ' : ''}${faDate(i['correspondence_date'])}',
                       style: const TextStyle(fontSize: 11, color: C.muted)),
                 ),
                 TextButton(onPressed: () => _delete(i['id']), child: const Text('حذف', style: TextStyle(color: C.danger))),
